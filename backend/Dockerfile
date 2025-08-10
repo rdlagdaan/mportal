@@ -1,41 +1,43 @@
-# backend/Dockerfile.railway  — production image for Railway
+# --- Build stage: install PHP deps with Composer ---
+FROM composer:2 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
+
+# --- Runtime stage: PHP + Swoole + extensions ---
 FROM php:8.2-cli
 
-# System deps
+# OS deps
 RUN apt-get update && apt-get install -y \
-    git unzip curl libpq-dev libzip-dev zlib1g-dev libbrotli-dev pkg-config build-essential procps \
- && docker-php-ext-install pdo pdo_pgsql zip pcntl \
- && pecl install swoole \
+    git unzip curl libpq-dev libzip-dev zlib1g-dev \
+    libbrotli-dev procps \
+ && rm -rf /var/lib/apt/lists/*
+
+# PHP extensions
+RUN docker-php-ext-install pdo pdo_pgsql zip pcntl
+
+# Swoole
+RUN pecl install swoole \
  && docker-php-ext-enable swoole
 
-# Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# App
+# App workdir
 WORKDIR /var/www/html
+
+# Copy app code (Dockerfile is inside /backend, so this copies backend only)
 COPY . .
 
-# Install PHP deps for production
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+# Bring in vendor from build stage
+COPY --from=vendor /app/vendor ./vendor
 
-# Ensure writable dirs
-RUN mkdir -p storage/framework/{cache,sessions,views} bootstrap/cache \
+# Ensure storage & cache are writable
+RUN mkdir -p storage bootstrap/cache \
+ && chmod -R 775 storage bootstrap/cache \
  && chown -R www-data:www-data storage bootstrap/cache
 
-# Railway will set PORT; Octane will bind to it (start script will use $PORT)
-ENV OCTANE_SERVER=swoole
-ENV OCTANE_PORT=${PORT}
+# Start script (added in BE-1)
+COPY docker/start.sh /usr/local/bin/start.sh
+# Normalize line endings in case file was edited on Windows
+RUN sed -i 's/\r$//' /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
+
 EXPOSE 8080
-
-# Make the start script executable inside the image
-RUN chmod +x docker/start.sh
-
-
-# --- keep everything above as-is ---
-
-# Make sure the start script is executable inside the image
-RUN chmod +x docker/start.sh
-
-# Run Octane via our start script (uses $PORT from Railway)
-CMD ["bash", "-lc", "docker/start.sh"]
-
+CMD ["start.sh"]

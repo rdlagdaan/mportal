@@ -4,8 +4,13 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MicrocredentialsApplicationController;
 
 
-Route::get('/', fn () => response('OK', 200));
+
+Route::get('/', fn () => 'OK');
+
 Route::get('/health', fn () => response()->json(['ok' => true]));
+Route::prefix('api')->group(function () {
+    Route::get('/health', fn () => response()->json(['ok' => true]));
+});
 /*
 |--------------------------------------------------------------------------
 | API Routes

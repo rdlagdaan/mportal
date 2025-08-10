@@ -1,40 +1,37 @@
 #!/usr/bin/env bash
-set -e
-cd /var/www/html
+set -euo pipefail
 
-# Clear any stale caches (safe if first run)
-php artisan config:clear || true
-php artisan route:clear || true
-php artisan view:clear || true
-
-# Require APP_KEY to be provided via env (recommended for Railway)
+# Require APP_KEY
 if [ -z "${APP_KEY:-}" ]; then
-  echo "ERROR: APP_KEY is not set. Set APP_KEY in Railway environment variables."
+  echo "ERROR: APP_KEY is not set. Generate one locally: php artisan key:generate --show"
   exit 1
 fi
 
-# Run migrations with a small retry loop in case DB isn't ready yet
-attempt=0
-until php artisan migrate --force; do
-  attempt=$((attempt+1))
-  if [ "$attempt" -ge 30 ]; then
-    echo "ERROR: Database not ready after multiple attempts."
-    exit 1
-  fi
-  echo "Database not ready yet. Retrying in 3s... (attempt $attempt/30)"
-  sleep 3
+# Clear any old caches
+php artisan optimize:clear || true
+
+# Wait for DB (simple loop)
+ATTEMPTS=20
+SLEEP=3
+for i in $(seq 1 $ATTEMPTS); do
+  php -r '
+    try {
+      $dsn = sprintf("pgsql:host=%s;port=%s;dbname=%s",
+        getenv("DB_HOST"), getenv("DB_PORT") ?: "5432", getenv("DB_DATABASE"));
+      new PDO($dsn, getenv("DB_USERNAME"), getenv("DB_PASSWORD"));
+      exit(0);
+    } catch (Throwable $e) { exit(1); }
+  ' && { echo "DB ready"; break; }
+  echo "DB not ready... ($i/$ATTEMPTS)"; sleep $SLEEP
 done
 
-# Cache for performance
-php artisan config:cache || true
-php artisan route:cache || true
-php artisan view:cache || true
+# Migrate (idempotent)
+php artisan migrate --force
 
-# Start Octane bound to Railway's PORT
-exec php artisan octane:start \
-  --server=swoole \
-  --host=0.0.0.0 \
-  --port="${PORT:-8080}" \
-  --workers=1 \
-  --max-requests=50 \
-  --task-workers=0
+# Cache for prod
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+
+# Start Octane on 8080 with conservative workers for Railway
+exec php artisan octane:start --server=swoole --host=0.0.0.0 --port=8080 --workers=1 --task-workers=0
