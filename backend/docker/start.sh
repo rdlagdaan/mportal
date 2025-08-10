@@ -31,4 +31,10 @@ php artisan route:cache || true
 php artisan view:cache || true
 
 # Start Octane bound to Railway's PORT
-php artisan octane:start --server=swoole --host=0.0.0.0 --port="${PORT:-8080}" --workers=4 --max-requests=500
+php artisan octane:start \
+  --server=swoole \
+  --host=0.0.0.0 \
+  --port="${PORT:-8080}" \
+  --workers=1 \
+  --max-requests=200 \
+  --task-workers=0
