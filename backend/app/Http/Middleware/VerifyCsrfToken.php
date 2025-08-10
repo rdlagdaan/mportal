@@ -31,7 +31,11 @@ class VerifyCsrfToken extends Middleware
      *
      * @var array<int, string>
      */
+
+
     protected $except = [
-        // Add routes here if needed
+        'forgot-password',
+        'reset-password',
     ];
+
 }

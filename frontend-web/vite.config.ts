@@ -1,18 +1,20 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 
+import path from 'path';
+
 export default defineConfig({
   plugins: [react()],
   base: '/',
   server: {
     proxy: {
-      '/api': 'http://localhost:8686',
-      '/sanctum': 'http://localhost:8686',
+      '/api': 'http://localhost:8787',
+      '/sanctum': 'http://localhost:8787',
     },
   },
   resolve: {
     alias: {
-      '@': '/src', // Direct path to src directory for the alias
+      '@': path.resolve(__dirname, './src') // Direct path to src directory for the alias
     },
   },
   build: {

@@ -3,16 +3,16 @@
 services:
   postgres:
     image: postgres:15
-    container_name: sucden_postgres
+    container_name: mportal_postgres
     restart: always
     ports:
       - "5434:5432"  # Avoids port conflict with other projects
     volumes:
-      - sucden_pgdata:/var/lib/postgresql/data
+      - mportal_pgdata:/var/lib/postgresql/data
     environment:
-      POSTGRES_USER: sucden
+      POSTGRES_USER: mportal
       POSTGRES_PASSWORD: secret
-      POSTGRES_DB: sucden_db
+      POSTGRES_DB: mportal_db
     networks:
       - app-network
 
@@ -20,38 +20,44 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: sucden_app
+    container_name: mportal_app
     restart: unless-stopped
-    working_dir: /var/www/html/sucden
+    working_dir: /var/www/html/mportal
     volumes:
-      - ./backend:/var/www/html/sucden
+      - ./backend:/var/www/html/mportal
     ports:
-      - "8686:8686"
+      - "8787:8787"
     depends_on:
       - postgres
     environment:
       DB_CONNECTION: pgsql
       DB_HOST: postgres
       DB_PORT: 5432
-      DB_DATABASE: sucden_db
-      DB_USERNAME: sucden
+      DB_DATABASE: mportal_db
+      DB_USERNAME: mportal
       DB_PASSWORD: secret
     command: >
       sh -c "
+      mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache &&
+      chown -R www-data:www-data storage bootstrap/cache || true &&
+      chmod -R 775 storage bootstrap/cache || true &&
       composer install &&
       php artisan config:cache &&
       php artisan migrate --force &&
-      php artisan octane:start --server=swoole --host=0.0.0.0 --port=8686
+      php artisan octane:stop || true &&
+      fuser -k 8787/tcp || true &&
+      php artisan octane:start --server=swoole --host=0.0.0.0 --port=8787
       "
     networks:
       - app-network
+
 
 
   frontend:
     build:
       context: ./frontend-web
       dockerfile: Dockerfile
-    container_name: sucden_frontend
+    container_name: mportal_frontend
     restart: unless-stopped
     ports:
       - "3001:80"
@@ -60,7 +66,7 @@ services:
 
 
 volumes:
-  sucden_pgdata:
+  mportal_pgdata:
 
 networks:
   app-network:
