@@ -1,8 +1,6 @@
-cd /projects/mportal/backend
-
-cat > docker/start.sh <<'EOF'
 #!/usr/bin/env bash
 set -e
+cd /var/www/html
 
 # Clear any stale caches (safe if first run)
 php artisan config:clear || true
@@ -34,6 +32,3 @@ php artisan view:cache || true
 
 # Start Octane bound to Railway's PORT
 php artisan octane:start --server=swoole --host=0.0.0.0 --port="${PORT:-8080}" --workers=4 --max-requests=500
-EOF
-
-chmod +x docker/start.sh
