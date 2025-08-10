@@ -1,42 +1,37 @@
-# --- Build stage: install PHP deps with Composer ---
-FROM composer:2 AS vendor
-WORKDIR /app
-COPY composer.json composer.lock ./
-RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
-
-# --- Runtime stage: PHP + Swoole + extensions ---
+# Single-stage build to avoid pulling composer:2
 FROM php:8.2-cli
 
-# OS deps
+# OS deps + build tools for PECL
 RUN apt-get update && apt-get install -y \
-    git unzip curl libpq-dev libzip-dev zlib1g-dev \
-    libbrotli-dev procps \
+    git unzip curl procps \
+    libpq-dev libzip-dev zlib1g-dev libbrotli-dev \
+    build-essential autoconf pkg-config libssl-dev \
  && rm -rf /var/lib/apt/lists/*
 
 # PHP extensions
 RUN docker-php-ext-install pdo pdo_pgsql zip pcntl
 
+# Install Composer (no composer:2 image pull)
+RUN php -r "copy('https://getcomposer.org/installer','composer-setup.php');" \
+ && php composer-setup.php --install-dir=/usr/local/bin --filename=composer \
+ && rm composer-setup.php
+
 # Swoole
 RUN pecl install swoole \
  && docker-php-ext-enable swoole
 
-# App workdir
+# App
 WORKDIR /var/www/html
-
-# Copy app code (Dockerfile is inside /backend, so this copies backend only)
 COPY . .
+RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 
-# Bring in vendor from build stage
-COPY --from=vendor /app/vendor ./vendor
-
-# Ensure storage & cache are writable
+# Permissions
 RUN mkdir -p storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache \
  && chown -R www-data:www-data storage bootstrap/cache
 
-# Start script (added in BE-1)
+# Start script
 COPY docker/start.sh /usr/local/bin/start.sh
-# Normalize line endings in case file was edited on Windows
 RUN sed -i 's/\r$//' /usr/local/bin/start.sh && chmod +x /usr/local/bin/start.sh
 
 EXPOSE 8080
