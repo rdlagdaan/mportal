@@ -31,5 +31,11 @@ EXPOSE 8080
 RUN chmod +x docker/start.sh
 
 
-# We'll add the start script next
-CMD ["bash", "-lc", "echo Add start.sh next"]
+# --- keep everything above as-is ---
+
+# Make sure the start script is executable inside the image
+RUN chmod +x docker/start.sh
+
+# Run Octane via our start script (uses $PORT from Railway)
+CMD ["bash", "-lc", "docker/start.sh"]
+
