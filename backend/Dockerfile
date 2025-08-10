@@ -3,7 +3,7 @@ FROM php:8.2-cli
 
 # System deps
 RUN apt-get update && apt-get install -y \
-    git unzip curl libpq-dev libzip-dev zlib1g-dev pkg-config build-essential \
+    git unzip curl libpq-dev libzip-dev zlib1g-dev libbrotli-dev pkg-config build-essential \
  && docker-php-ext-install pdo pdo_pgsql zip pcntl \
  && pecl install swoole \
  && docker-php-ext-enable swoole
