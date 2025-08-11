@@ -12,7 +12,7 @@ use App\Http\Requests\Micro\ApplyRequest;
 
 class MicrocredentialsApplicationController extends Controller
 {
-    public function store(ApplyRequest $request)
+    /*dev working public function store(ApplyRequest $request)
     {
         // Already validated via ApplyRequest
         $validated = $request->validated();
@@ -40,7 +40,42 @@ class MicrocredentialsApplicationController extends Controller
             'message' => 'Application received.',
             'email'   => $validated['email'] ?? null,
         ], 201);
+    }*/
+
+
+    public function store(ApplyRequest $request)
+    {
+        try {
+            $validated = $request->validated();
+
+            $user = \App\Models\User::create([
+                'name'          => trim(($validated['firstName'] ?? '').' '.($validated['lastName'] ?? '')),
+                'email'         => $validated['email'],
+                'mobile_number' => $validated['mobile'],
+                'password'      => \Illuminate\Support\Facades\Hash::make($validated['password']),
+            ]);
+
+            // Assign Spatie role
+            $user->assignRole('micro_applicant');
+
+            // Notify program officer (MAIL_MAILER=log in prod so no real send)
+            \Illuminate\Support\Facades\Mail::to(config('micro.officer_email', 'officer@example.com'))
+                ->send(new \App\Mail\MicroApplicationSubmitted($user, $validated));
+
+            return response()->json([
+                'ok'      => true,
+                'message' => 'Application received.',
+                'email'   => $validated['email'] ?? null,
+            ], 201);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok'    => false,
+                'error' => $e->getMessage(),
+                'type'  => get_class($e),
+            ], 500);
+        }
     }
+       
 
     public function status(\Illuminate\Http\Request $request)
     {
