@@ -84,5 +84,8 @@ exec php artisan octane:start --server=swoole --host=0.0.0.0 --port=8080 --worke
 BASH
 RUN chmod +x /usr/local/bin/start.sh
 
+# NEW: ensure any stray .env is removed so runtime uses Railway env
+RUN rm -f .env
+
 EXPOSE 8080
 CMD ["start.sh"]
