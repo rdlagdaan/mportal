@@ -40,37 +40,37 @@ export default function TabbedLogin() {
   };
 
   // ✅ PUT THE HANDLER INSIDE THE COMPONENT (here)
-  const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!isMicro) return; // sign-in only on the Micro tab
+const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  e.preventDefault();
+  if (!isMicro) return; // only allow sign-in on "TUA Microcredentials" tab
 
-    setLoginError("");
-    setLoading(true);
+  setLoginError('');
+  setLoading(true);
 
-    try {
-      const res = await postWithCsrf("/microcredentials/login", {
-        email: loginEmail,
-        password: loginPassword,
-        remember,
-      });
+  try {
+    const res = await postWithCsrf('/microcredentials/login', {
+      email: loginEmail,
+      password: loginPassword,
+      remember,
+    });
 
-if (res.status === 200 && res.data?.ok) {
-  console.log('LOGIN_OK', res.status, res.data); // temp debug
+    if (res.status === 200 && res.data?.ok) {
+      console.log('LOGIN_OK', res.data); // <-- should appear in Console
 
-  // build the SPA base safely (works in dev and prod)
-  const base = (import.meta.env.BASE_URL || '/app/').replace(/\/$/, '');
-  window.location.assign(`${base}/dashboard`);  // -> /app/dashboard
-  return;
-}
-
-
-      setLoginError(res.data?.message || "Login failed");
-    } catch (err: any) {
-      setLoginError(err?.response?.data?.message || "Invalid credentials");
-    } finally {
-      setLoading(false);
+      // Hard redirect to SPA route under /app (works regardless of router/basename)
+      const base = (import.meta.env.BASE_URL || '/app/').replace(/\/$/, '');
+      window.location.assign(`${base}/dashboard`); // => /app/dashboard
+      return;
     }
-  };
+
+    setLoginError(res.data?.message || 'Login failed');
+  } catch (err: any) {
+    setLoginError(err?.response?.data?.message || 'Invalid credentials');
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen relative flex items-center justify-center p-6 bg-gradient-to-br from-green-700 via-green-500 to-yellow-300">
