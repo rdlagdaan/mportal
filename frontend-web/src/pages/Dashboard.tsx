@@ -166,7 +166,7 @@ useEffect(() => {
     try {
       const me = await getWithCreds('/me');          // cookie-based auth check
       if (!me.data?.user) {
-        navigate('/login');
+        //navigate('/login');
         return;
       }
       // (optional) show the username from backend
@@ -176,7 +176,7 @@ useEffect(() => {
       setSystems(mod.data);
     } catch (err) {
       console.error('Auth/modules fetch failed', err);
-      navigate('/login');
+      //navigate('/login');
     }
   })();
 }, [navigate]);
