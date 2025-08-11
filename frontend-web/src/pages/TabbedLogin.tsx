@@ -42,8 +42,9 @@ export default function TabbedLogin() {
   // ✅ PUT THE HANDLER INSIDE THE COMPONENT (here)
 const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
   e.preventDefault();
-  if (!isMicro) return; // only allow sign-in on "TUA Microcredentials" tab
+  if (!isMicro) return;
 
+  console.log('SUBMIT start', { loginEmail });   // ← debug log
   setLoginError('');
   setLoading(true);
 
@@ -53,13 +54,11 @@ const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
       password: loginPassword,
       remember,
     });
+    console.log('SUBMIT result', res.status, res.data);   // ← debug log
 
     if (res.status === 200 && res.data?.ok) {
-      console.log('LOGIN_OK', res.data); // <-- should appear in Console
-
-      // Hard redirect to SPA route under /app (works regardless of router/basename)
       const base = (import.meta.env.BASE_URL || '/app/').replace(/\/$/, '');
-      window.location.assign(`${base}/dashboard`); // => /app/dashboard
+      window.location.assign(`${base}/dashboard`); // → /app/dashboard
       return;
     }
 
