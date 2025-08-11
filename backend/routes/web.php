@@ -1,6 +1,6 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+/*use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MicrocredentialsApplicationController;
 
 use Illuminate\Http\Request;        // NEW
@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Auth; // NEW
 use Illuminate\Support\Facades\Hash; // NEW
 use App\Models\User;                 // NEW
 
-
+use App\Http\Controllers\Auth\MicroAuthController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
 */
-Route::prefix('api')->group(function () {
+/*Route::prefix('api')->group(function () {
     
     
     // PUBLIC submit endpoint (guest + CSRF)
@@ -97,7 +97,7 @@ Route::prefix('api')->group(function () {
 });
 
 require __DIR__ . '/auth.php';
-
+*/
 /*
 |--------------------------------------------------------------------------
 | SPA under /app
@@ -105,6 +105,65 @@ require __DIR__ . '/auth.php';
 | 1) Redirect /app → /app/login so login shows first
 | 2) Catch-all only for /app/* and serve public/app/index.html
 */
+/*Route::get('/app', fn () => file_get_contents(public_path('app/index.html')));
+Route::get('/app/{any}', fn () => file_get_contents(public_path('app/index.html')))->where('any', '.*');
+*/
+
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\MicrocredentialsApplicationController;
+use App\Http\Controllers\Auth\MicroAuthController;
+
+/*
+|--------------------------------------------------------------------------
+| API Routes (Sanctum session lives on 'web' middleware)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('api')->middleware(['web'])->group(function () {
+
+    // PUBLIC submit endpoint (guest, with CSRF; throttle tighter)
+    Route::middleware(['guest','throttle:10,1'])->group(function () {
+        Route::post('/microcredentials/apply', [MicrocredentialsApplicationController::class, 'store'])
+            ->name('micro.apply.public');
+    });
+
+    // LOGIN — JSON only, no redirects (IMPORTANT: no 'guest', no 'auth')
+    Route::post('/microcredentials/login', [MicroAuthController::class, 'login'])
+        ->middleware(['throttle:30,1'])
+        ->name('micro.login');
+
+    // Authenticated "who am I" for SPA
+    Route::get('/me', function (\Illuminate\Http\Request $request) {
+        return response()->json([
+            'ok' => true,
+            'user' => $request->user() ? [
+                'id' => $request->user()->id,
+                'name' => $request->user()->name,
+                'email' => $request->user()->email,
+            ] : null,
+        ]);
+    })->middleware(['auth:sanctum']);
+
+    // Status (needs permission)
+    Route::get('/microcredentials/status', [MicrocredentialsApplicationController::class, 'status'])
+        ->middleware(['auth:sanctum','permission:micro.view-status','throttle:60,1']);
+
+    // Logout (JSON)
+    Route::post('/logout', function (\Illuminate\Http\Request $request) {
+        \Illuminate\Support\Facades\Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+        return response()->json(['ok' => true, 'message' => 'Logged out']);
+    })->middleware(['auth:sanctum']);
+});
+
+/*
+|--------------------------------------------------------------------------
+| SPA under /app  (keep these as you have them)
+|--------------------------------------------------------------------------
+*/
 Route::get('/app', fn () => file_get_contents(public_path('app/index.html')));
 Route::get('/app/{any}', fn () => file_get_contents(public_path('app/index.html')))->where('any', '.*');
+
+require __DIR__ . '/auth.php';
 
