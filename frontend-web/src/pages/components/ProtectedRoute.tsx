@@ -10,21 +10,22 @@ export default function ProtectedRoute({ children }: Props) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      console.log("[PROTECT] checking /api/me …");
       try {
-        // uses axiosnapi with withCredentials=true
         const res = await getWithCreds("/me");
+        console.log("[PROTECT] /api/me", res.status, res.data);
         const user = res?.data?.user;
         if (!cancelled) setStatus(user ? "ok" : "no");
-      } catch {
+      } catch (err) {
+        console.log("[PROTECT] /api/me ERROR", err);
         if (!cancelled) setStatus("no");
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
-  if (status === "checking") return null; // or a small spinner
+  console.log("[PROTECT] render status =", status);
+  if (status === "checking") return null;
   if (status === "ok") return <>{children}</>;
   return <Navigate to="/login" replace />;
 }
