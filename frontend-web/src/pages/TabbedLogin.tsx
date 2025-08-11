@@ -54,16 +54,15 @@ export default function TabbedLogin() {
         remember,
       });
 
-      if (res.status === 200 && res.data?.ok) {
-        // If your Router has basename="/app", this navigates to /app/dashboard
-        //navigate('/dashboard');
-        window.location.assign('/app/dashboard');
-        
+if (res.status === 200 && res.data?.ok) {
+  console.log('LOGIN_OK', res.status, res.data); // temp debug
 
-        // If you do NOT use a basename, use:
-        // navigate("/app/dashboard");
-        return;
-      }
+  // build the SPA base safely (works in dev and prod)
+  const base = (import.meta.env.BASE_URL || '/app/').replace(/\/$/, '');
+  window.location.assign(`${base}/dashboard`);  // -> /app/dashboard
+  return;
+}
+
 
       setLoginError(res.data?.message || "Login failed");
     } catch (err: any) {
