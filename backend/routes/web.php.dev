@@ -3,17 +3,30 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\MicrocredentialsApplicationController;
 
+
+
+Route::get('/', fn () => 'OK');
+
+Route::get('/health', fn () => response()->json(['ok' => true]));
+Route::prefix('api')->group(function () {
+    Route::get('/health', fn () => response()->json(['ok' => true]));
+});
 /*
 |--------------------------------------------------------------------------
 | API Routes
 |--------------------------------------------------------------------------
 */
-Route::prefix('api')->group(function () {
-    // PUBLIC submit endpoint (guest + CSRF)
-    Route::middleware(['web', 'guest', 'throttle:10,1'])->group(function () {
-        Route::post('/microcredentials/apply', [MicrocredentialsApplicationController::class, 'store'])
-            ->name('micro.apply.public');
-    });
+    Route::prefix('api')->group(function () {
+
+        // PUBLIC submit endpoint (guest + CSRF)
+        Route::middleware(['web', 'guest', 'throttle:10,1'])->group(function () {
+            Route::post('/microcredentials/apply', [MicrocredentialsApplicationController::class, 'store'])
+                ->name('micro.apply.public');
+        });
+
+
+
+
 
     // Status (requires micro.view-status)
     Route::get('/microcredentials/status', [MicrocredentialsApplicationController::class, 'status'])
@@ -29,13 +42,10 @@ require __DIR__ . '/auth.php';
 
 /*
 |--------------------------------------------------------------------------
-| SPA under /app
+| SPA Fallback Route
 |--------------------------------------------------------------------------
-| 1) Redirect /app → /app/login so login shows first
-| 2) Catch-all only for /app/* and serve public/app/index.html
+| Keep this LAST to serve the React app for any unmatched route.
 */
-Route::get('/app', fn () => redirect('/app/login'));
-
-Route::get('/app/{any}', function () {
-    return file_get_contents(public_path('app/index.html'));
+Route::get('/{any}', function () {
+    return file_get_contents(public_path('index.html'));
 })->where('any', '.*');
