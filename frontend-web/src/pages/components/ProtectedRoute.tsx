@@ -1,53 +1,30 @@
-// frontend-web/src/components/ProtectedRoute.tsx
-import { Navigate, useNavigate } from "react-router-dom";
-import useAuth from "@/hooks/useAuth";
-import { logout } from "@/utils/axiosnapi";
-import type { JSX } from 'react';
+import { ReactNode, useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
+import { getWithCreds } from "@/utils/axiosnapi";
 
-export default function ProtectedRoute({ children }: { children: JSX.Element }) {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
+type Props = { children: ReactNode };
 
-  async function handleLogout() {
-    try {
-      await logout();
-      navigate("/login");
-    } catch {
-      alert("Logout failed");
-    }
-  }
+export default function ProtectedRoute({ children }: Props) {
+  const [status, setStatus] = useState<"checking" | "ok" | "no">("checking");
 
-  if (loading) {
-    return (
-      <div className="min-h-screen grid place-items-center">
-        <div className="animate-pulse text-gray-600">Checking session…</div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        // uses axiosnapi with withCredentials=true
+        const res = await getWithCreds("/me");
+        const user = res?.data?.user;
+        if (!cancelled) setStatus(user ? "ok" : "no");
+      } catch {
+        if (!cancelled) setStatus("no");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return (
-    <div className="min-h-screen flex flex-col">
-      {/* Header with logout */}
-      <header className="bg-white shadow-sm flex items-center justify-between px-6 py-4">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">
-            Welcome, {user.name}
-          </h1>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="px-3 py-1.5 rounded-md bg-red-600 text-white hover:bg-red-700 text-sm font-medium"
-        >
-          Logout
-        </button>
-      </header>
-
-      {/* Page content */}
-      <main className="flex-1 bg-gray-50">{children}</main>
-    </div>
-  );
+  if (status === "checking") return null; // or a small spinner
+  if (status === "ok") return <>{children}</>;
+  return <Navigate to="/login" replace />;
 }
