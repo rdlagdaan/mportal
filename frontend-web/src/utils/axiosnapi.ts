@@ -118,61 +118,49 @@ export async function logout() {
 
 export default napi;*/
 
-// src/utils/axiosnapi.ts
+// frontend-web/src/utils/axiosnapi.ts
 import axios, { AxiosError, AxiosHeaders } from "axios";
 import Cookies from "js-cookie";
 import type { InternalAxiosRequestConfig } from "axios";
 
-/**
- * Resolve a safe baseURL for API calls.
- * - In production over HTTPS, force same-origin "/api" (prevents mixed-content).
- * - Otherwise, allow VITE_API_URL (relative preferred), fallback to "/api".
- */
+/** Resolve a safe base URL for API calls (prevents mixed content). */
 function resolveBaseURL(): string {
   const envUrl = (import.meta.env.VITE_API_URL || "").trim();
-  const isBrowser = typeof window !== "undefined";
-  const isHttps = isBrowser && window.location.protocol === "https:";
 
-  // Prefer relative paths ("/api") – always safe.
+  // Prefer relative path (always safe on any origin)
   if (!envUrl) return "/api";
   if (envUrl.startsWith("/")) return envUrl;
 
-  // If someone set an absolute HTTP URL but page is HTTPS -> force same-origin
-  if (isHttps && envUrl.startsWith("http://")) return "/api";
+  // If page is HTTPS and env is http://..., force same-origin "/api"
+  if (typeof window !== "undefined") {
+    const isHttps = window.location.protocol === "https:";
+    if (isHttps && envUrl.startsWith("http://")) return "/api";
 
-  // If absolute HTTPS and matches our origin, reduce to path (optional)
-  if (isBrowser) {
+    // If absolute and same-origin, collapse to its path
     try {
       const abs = new URL(envUrl, window.location.origin);
       if (abs.origin === window.location.origin) {
         return abs.pathname.replace(/\/+$/, "") || "/api";
       }
-    } catch {
-      /* ignore and fall through */
-    }
+    } catch {/* ignore */}
   }
 
-  // As a last resort, return envUrl (but mixed-content might occur in dev only)
+  // Fallback (allows absolute https:// in dev if needed)
   return envUrl;
 }
 
 const baseURL = resolveBaseURL();
-
-// Always fetch CSRF from same-origin root (NOT under /api)
-const CSRF_URL = "/sanctum/csrf-cookie";
+const CSRF_URL = "/sanctum/csrf-cookie"; // always at site root, not under /api
 
 // ---------- Axios instance ----------
 const napi = axios.create({
-  baseURL, // e.g. "/api"
-  withCredentials: true,
+  baseURL,                 // e.g. "/api"
+  withCredentials: true,   // send/receive Sanctum session cookies
 });
-
-// Default header
 (napi.defaults.headers.common as any)["X-Requested-With"] = "XMLHttpRequest";
 
 // ---------- CSRF helpers ----------
 let csrfFetching: Promise<void> | null = null;
-
 async function fetchCsrfCookie(): Promise<void> {
   if (!csrfFetching) {
     csrfFetching = axios
@@ -181,9 +169,7 @@ async function fetchCsrfCookie(): Promise<void> {
         headers: { "X-Requested-With": "XMLHttpRequest" },
       })
       .then(() => void 0)
-      .finally(() => {
-        csrfFetching = null;
-      });
+      .finally(() => { csrfFetching = null; });
   }
   return csrfFetching;
 }
@@ -194,27 +180,26 @@ export async function ensureCsrf(): Promise<void> {
   }
 }
 
-const isUnsafe = (method?: string) =>
-  ["post", "put", "patch", "delete"].includes((method || "").toLowerCase());
+const isUnsafe = (m?: string) =>
+  ["post", "put", "patch", "delete"].includes((m || "").toLowerCase());
 
 // ---------- Request interceptor ----------
 napi.interceptors.request.use(
   async (config: InternalAxiosRequestConfig & { _retried?: boolean }) => {
-    // Normalize headers to AxiosHeaders
     if (!config.headers || !(config.headers instanceof AxiosHeaders)) {
       config.headers = new AxiosHeaders(config.headers as any);
     }
 
-    // Ensure CSRF cookie for unsafe methods
+    // Ensure CSRF cookie before unsafe methods
     if (isUnsafe(config.method) && !Cookies.get("XSRF-TOKEN")) {
       await fetchCsrfCookie();
     }
 
-    // Add CSRF header from cookie
+    // Attach CSRF header
     const xsrf = Cookies.get("XSRF-TOKEN");
     if (xsrf) config.headers.set("X-XSRF-TOKEN", xsrf);
 
-    // Optional bearer (kept for future token-based APIs)
+    // Optional bearer (kept for future token APIs)
     const bearer = localStorage.getItem("token");
     if (bearer) config.headers.set("Authorization", `Bearer ${bearer}`);
 
@@ -236,10 +221,10 @@ napi.interceptors.response.use(
       | (InternalAxiosRequestConfig & { _retried?: boolean })
       | undefined;
 
-    const looksLikeCsrfIssue =
+    const looksLikeCsrf =
       status === 419 || (status === 401 && /csrf/i.test(msg || ""));
 
-    if (cfg && !cfg._retried && looksLikeCsrfIssue) {
+    if (cfg && !cfg._retried && looksLikeCsrf) {
       cfg._retried = true;
       await fetchCsrfCookie();
 
