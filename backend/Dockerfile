@@ -1,40 +1,42 @@
-# Laravel 12 + Octane (Swoole) — Koyeb-ready single-stage image
+# Root-level Dockerfile for Railway
+# Builds Laravel 12 + Octane (Swoole) from ./backend without relying on Root Directory settings.
+
 FROM php:8.2-cli
 
-# System deps (incl. build tools for Swoole)
+# --- System deps (incl. build tools for Swoole) ---
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git unzip curl ca-certificates procps \
     libpq-dev libzip-dev zlib1g-dev libbrotli-dev \
     build-essential autoconf pkg-config libssl-dev \
  && rm -rf /var/lib/apt/lists/*
 
-# PHP extensions
+# --- PHP extensions ---
 RUN docker-php-ext-install pdo pdo_pgsql zip pcntl
 
-# Composer (no composer:2 base image)
+# --- Composer (no composer:2 base image pull) ---
 RUN php -r "copy('https://getcomposer.org/installer','/tmp/composer-setup.php');" \
  && php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer \
  && rm /tmp/composer-setup.php
 
-# Swoole via PECL
+# --- Swoole via PECL ---
 RUN pecl channel-update pecl.php.net \
  && printf "\n" | pecl install swoole \
  && docker-php-ext-enable swoole
 
-# App code (build context must be backend/)
+# --- App code: copy ONLY the backend folder into the image ---
 WORKDIR /var/www/html
-COPY . .
+COPY backend/ ./
 
-# PHP deps
+# --- PHP deps ---
 ENV COMPOSER_ALLOW_SUPERUSER=1
 RUN composer install --no-dev --prefer-dist --no-interaction --no-progress --optimize-autoloader
 
-# Writable dirs
+# --- Writable dirs ---
 RUN mkdir -p storage bootstrap/cache \
  && chmod -R 775 storage bootstrap/cache \
  && chown -R www-data:www-data storage bootstrap/cache
 
-# Inline start script (wait DB → migrate → start Octane)
+# --- Inline start script: wait DB → migrate → cache → start Octane ---
 RUN cat > /usr/local/bin/start.sh <<'BASH'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -46,7 +48,7 @@ fi
 
 php artisan optimize:clear || true
 
-# Wait for DB
+# Wait for DB to be reachable
 ATTEMPTS=30
 SLEEP=2
 for i in $(seq 1 $ATTEMPTS); do
@@ -64,7 +66,6 @@ for i in $(seq 1 $ATTEMPTS); do
 done
 
 php artisan migrate --force || true
-
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
