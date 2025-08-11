@@ -119,48 +119,41 @@ export async function logout() {
 export default napi;*/
 
 // frontend-web/src/utils/axiosnapi.ts
+// src/axiosnapi.ts
 import axios, { AxiosError, AxiosHeaders } from "axios";
 import Cookies from "js-cookie";
 import type { InternalAxiosRequestConfig } from "axios";
 
 /** Resolve a safe base URL for API calls (prevents mixed content). */
 function resolveBaseURL(): string {
-  const envUrl = (import.meta.env.VITE_API_URL || "").trim();
-
-  // Prefer relative path (always safe on any origin)
-  if (!envUrl) return "/api";
-  if (envUrl.startsWith("/")) return envUrl;
-
-  // If page is HTTPS and env is http://..., force same-origin "/api"
+  // In the browser: ALWAYS use same-origin /api (guaranteed https in prod)
   if (typeof window !== "undefined") {
-    const isHttps = window.location.protocol === "https:";
-    if (isHttps && envUrl.startsWith("http://")) return "/api";
-
-    // If absolute and same-origin, collapse to its path
-    try {
-      const abs = new URL(envUrl, window.location.origin);
-      if (abs.origin === window.location.origin) {
-        return abs.pathname.replace(/\/+$/, "") || "/api";
-      }
-    } catch {/* ignore */}
+    return new URL("/api", window.location.origin).toString();
   }
 
-  // Fallback (allows absolute https:// in dev if needed)
-  return envUrl;
+  // In SSR/build tools (no window): allow env override or default to /api
+  const envUrl = (import.meta.env.VITE_API_URL || "").trim();
+  return envUrl || "/api";
 }
 
 const baseURL = resolveBaseURL();
-const CSRF_URL = "/sanctum/csrf-cookie"; // always at site root, not under /api
+
+/** Sanctum CSRF cookie endpoint (site root, not under /api). */
+const CSRF_URL =
+  typeof window !== "undefined"
+    ? new URL("/sanctum/csrf-cookie", window.location.origin).toString()
+    : "/sanctum/csrf-cookie";
 
 // ---------- Axios instance ----------
 const napi = axios.create({
-  baseURL,                 // e.g. "/api"
-  withCredentials: true,   // send/receive Sanctum session cookies
+  baseURL,               // e.g. "https://host/app/../api" (normalized)
+  withCredentials: true, // send/receive Sanctum cookies
 });
 (napi.defaults.headers.common as any)["X-Requested-With"] = "XMLHttpRequest";
 
 // ---------- CSRF helpers ----------
 let csrfFetching: Promise<void> | null = null;
+
 async function fetchCsrfCookie(): Promise<void> {
   if (!csrfFetching) {
     csrfFetching = axios
@@ -169,7 +162,9 @@ async function fetchCsrfCookie(): Promise<void> {
         headers: { "X-Requested-With": "XMLHttpRequest" },
       })
       .then(() => void 0)
-      .finally(() => { csrfFetching = null; });
+      .finally(() => {
+        csrfFetching = null;
+      });
   }
   return csrfFetching;
 }
