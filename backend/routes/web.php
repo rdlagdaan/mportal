@@ -23,8 +23,9 @@ Route::prefix('api')->group(function () {
             ->name('micro.apply.public');
     
 
-        // NEW: Microcredentials login (session-based via Sanctum)
-        Route::post('/microcredentials/login', function (Request $request) {
+// Login (session-based, Sanctum) — with error surface
+    Route::post('/microcredentials/login', function (Request $request) {
+        try {
             $data = $request->validate([
                 'email'    => ['required','email'],
                 'password' => ['required'],
@@ -38,13 +39,21 @@ Route::prefix('api')->group(function () {
             }
 
             Auth::login($user, (bool)($data['remember'] ?? false));
+            $request->session()->regenerate(); // prevent fixation
 
             return response()->json([
                 'ok'      => true,
                 'message' => 'Login successful',
                 'user'    => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email],
-            ]);
-        });
+            ], 200);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'ok'    => false,
+                'error' => $e->getMessage(),
+                'type'  => class_basename($e),
+            ], 500);
+        }
+    })->middleware(['web', 'guest', 'throttle:30,1']); // keep 'web' for session
 
 
 
