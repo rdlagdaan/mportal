@@ -56,8 +56,8 @@ export default function TabbedLogin() {
 
       if (res.status === 200 && res.data?.ok) {
         // If your Router has basename="/app", this navigates to /app/dashboard
-        navigate('/dashboard');
-        //window.location.assign('/app/dashboard');
+        //navigate('/dashboard');
+        window.location.assign('/app/dashboard');
         
 
         // If you do NOT use a basename, use:
