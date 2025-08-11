@@ -1,6 +1,6 @@
 // src/components/TabbedLogin.tsx
 import { useState } from "react";
-//import napi from "@/utils/axiosnapi"; // <-- your dynamic, CSRF-aware axios instance
+import { useNavigate } from "react-router-dom"; // ⬅️ added
 import { postWithCsrf } from '@/utils/axiosnapi';
 
 const tabs = [
@@ -24,6 +24,14 @@ export default function TabbedLogin() {
   const [activeTab, setActiveTab] = useState(0);
   const [showReg, setShowReg] = useState(false);
 
+  const [loginEmail, setLoginEmail] = useState("");        // ⬅️ added
+  const [loginPassword, setLoginPassword] = useState("");  // ⬅️ added
+  const [remember, setRemember] = useState(false);         // ⬅️ added
+  const [loading, setLoading] = useState(false);           // ⬅️ added
+  const [loginError, setLoginError] = useState("");        // ⬅️ added
+
+  const navigate = useNavigate(); // ⬅️ added
+  
   const isMicro = activeTab === 2;
 
   const handleApplyNow = () => {
@@ -77,59 +85,99 @@ export default function TabbedLogin() {
               {tabs[activeTab].name}
             </h2>
 
-            <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Email</label>
-                <input
-                  type="email"
-                  placeholder="you@example.com"
-                  className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-md focus:border-emerald-600 focus:ring-emerald-600 sm:text-sm"
-                />
-              </div>
+<form
+  className="space-y-4"
+  onSubmit={async (e) => {
+    e.preventDefault();
+    if (!isMicro) return; // only Micro tab can sign in
+    setLoginError("");
+    setLoading(true);
+    try {
+      const res = await postWithCsrf("/microcredentials/login", {
+        email: loginEmail,
+        password: loginPassword,
+        remember,
+      });
+      if (res?.data?.ok) {
+        navigate("/dashboard"); // ⬅️ will resolve to /app/dashboard because of basename
+      } else {
+        setLoginError(res?.data?.message || "Invalid credentials");
+      }
+    } catch (err: any) {
+      setLoginError(err?.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
+    }
+  }}
+>
+  <div>
+    <label className="block text-sm font-medium text-gray-700">Email</label>
+    <input
+      type="email"
+      placeholder="you@example.com"
+      value={loginEmail}                        
+      onChange={(e) => setLoginEmail(e.target.value)}  
+      required
+      className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-md focus:border-emerald-600 focus:ring-emerald-600 sm:text-sm"
+    />
+  </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700">Password</label>
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-md focus:border-emerald-600 focus:ring-emerald-600 sm:text-sm"
-                />
-              </div>
+  <div>
+    <label className="block text-sm font-medium text-gray-700">Password</label>
+    <input
+      type="password"
+      placeholder="••••••••"
+      value={loginPassword}                       
+      onChange={(e) => setLoginPassword(e.target.value)}  
+      required
+      className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-md focus:border-emerald-600 focus:ring-emerald-600 sm:text-sm"
+    />
+  </div>
 
-              <div className="flex items-center justify-between">
-                <label className="inline-flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    id="remember"
-                    name="remember"
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600"
-                  />
-                  Remember me
-                </label>
-                <a href="#" className="text-sm font-semibold text-emerald-700 hover:text-emerald-600">
-                  Forgot password?
-                </a>
-              </div>
+  <div className="flex items-center justify-between">
+    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+      <input
+        id="remember"
+        name="remember"
+        type="checkbox"
+        checked={remember}                    
+        onChange={(e) => setRemember(e.target.checked)} 
+        className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-600"
+      />
+      Remember me
+    </label>
+    <a href="#" className="text-sm font-semibold text-emerald-700 hover:text-emerald-600">
+      Forgot password?
+    </a>
+  </div>
 
-              <button
-                type="submit"
-                className={`w-full py-2.5 rounded-md font-semibold shadow-md transition-colors duration-200 ${tabs[activeTab].color}`}
-              >
-                Sign In
-              </button>
+  {loginError && (                               /* ⬅️ added */
+    <div className="text-red-600 text-sm">{loginError}</div>
+  )}
 
-              <button
-                type="button"
-                onClick={handleApplyNow}
-                className={`w-full py-2.5 rounded-md font-semibold shadow-md transition-colors duration-200 ${
-                  isMicro ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                }`}
-                disabled={!isMicro}
-                title={isMicro ? "Open registration form" : "Only available for TUA Microcredentials"}
-              >
-                Apply Now
-              </button>
-            </form>
+  <button
+    type="submit"
+    disabled={!isMicro || loading}              
+    title={isMicro ? "" : "Sign-in available on TUA Microcredentials tab only"}
+    className={`w-full py-2.5 rounded-md font-semibold shadow-md transition-colors duration-200 ${tabs[activeTab].color} ${
+      (!isMicro || loading) ? "opacity-60 cursor-not-allowed" : ""
+    }`}
+  >
+    {loading ? "Signing in..." : "Sign In"}     
+  </button>
+
+  <button
+    type="button"
+    onClick={handleApplyNow}
+    className={`w-full py-2.5 rounded-md font-semibold shadow-md transition-colors duration-200 ${
+      isMicro ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-gray-100 text-gray-400 cursor-not-allowed"
+    }`}
+    disabled={!isMicro}
+    title={isMicro ? "Open registration form" : "Only available for TUA Microcredentials"}
+  >
+    Apply Now
+  </button>
+</form>
 
             {/* Social divider */}
             <div className="mt-8">

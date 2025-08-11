@@ -10,6 +10,7 @@ import {
 
 import { lazy, Suspense } from 'react';
 
+import { logout } from "@/utils/axiosnapi";
 import { useNavigate } from 'react-router-dom'; // 👈 Required for redirection
 //import Role from './components/settings/Role'; // adjust the path as needed
 //import Pbn_entry_form from './components/quedan_tracking/Pbn_entry_form'; // adjust the path as needed
@@ -75,7 +76,7 @@ export default function Dashboard() {
   const [searchQuery, setSearchQuery] = useState('');
 
 
-    const handleLogout = async () => {
+  /*  const handleLogout = async () => {
     try {
         await napi.post('/api/logout');
         localStorage.removeItem('token'); // clear token
@@ -86,7 +87,18 @@ export default function Dashboard() {
         alert('Logout failed');
     }
     };
+  */
+  
+    async function handleLogout() {
+      try {
+        await logout();
+        navigate("/login");
+      } catch {
+        alert("Logout failed");
+      }
+    }
 
+  
     useEffect(() => {
       const storedUser = localStorage.getItem('user');
       if (storedUser) {

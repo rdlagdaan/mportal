@@ -105,11 +105,15 @@ napi.interceptors.response.use(
   }
 );
 
+
+
 export async function postWithCsrf<T = any>(url: string, data?: any) {
   await ensureCsrf();
   return napi.post<T>(url, data);
 }
 
-
+export async function logout() {
+  return await postWithCsrf("/logout", {});
+}
 
 export default napi;
