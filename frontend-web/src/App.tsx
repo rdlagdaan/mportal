@@ -1,3 +1,4 @@
+// src/App.tsx
 import * as React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import DashboardLayout from './DashboardLayout'
@@ -10,6 +11,7 @@ export default function App() {
   return (
     <BrowserRouter basename="/app">
       <Routes>
+        {/* NOTE: no path on the parent route */}
         <Route element={<DashboardLayout />}>
           <Route index element={<Navigate to="courses" replace />} />
           <Route path="courses" element={<CoursesPage />} />
