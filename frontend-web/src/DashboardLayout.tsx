@@ -9,9 +9,9 @@ import {
   Bars3Icon,
   XMarkIcon,
   MagnifyingGlassIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
 import { logout } from '@/utils/axiosnapi' // <-- your real API logout
-
 /**
  * DashboardLayout.tsx (STATIC)
  * - Responsive header + sidebar
@@ -66,11 +66,15 @@ export default function DashboardLayout() {
             />
           </div>
 
-          <button
+            <button
+            type="button"
             onClick={handleLogout}
             className="flex items-center gap-2 rounded-xl bg-white px-3 py-1.5 text-sm font-medium text-green-900 ring-1 ring-green-200 hover:bg-green-50"
             title="Log out"
-          ></button>          
+            >
+            <ArrowRightOnRectangleIcon className="h-5 w-5" />
+            <span className="hidden sm:inline">Logout</span>
+            </button>        
         </div>
       </header>
 
