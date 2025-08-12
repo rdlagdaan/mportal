@@ -12,6 +12,10 @@ import ProfilePage from './pages/ProfilePage'
 import CertificatePage from './pages/CertificatePage'   // NEW
 import BadgePage from './pages/BadgePage'               // NEW
 import CourseReportPage from './pages/CourseReportPage' // NEW
+import CheckoutPage from './pages/CheckoutPage' 
+
+
+
 
 export default function App() {
   return (
@@ -21,6 +25,9 @@ export default function App() {
     <Route element={<DashboardLayout />}>
       <Route path="courses"  element={<CoursesPage />} />
        <Route path="courses/:courseId" element={<CourseDetails />} /> 
+        <Route path="courses/:courseId/checkout" element={<CheckoutPage />} />
+
+
        <Route path="courses/:courseId/report" element={<CourseReportPage />} />
       <Route path="enrolled" element={<EnrolledPage />} />
       <Route path="finished" element={<FinishedPage />} />

@@ -23,10 +23,11 @@ export default function CourseDetails(){
     )
   }
 
-  function handleEnroll(){
-    // Prototype: jump to Enrolled. Later this will open a payment screen.
-    navigate('/enrolled')
-  }
+// inside CourseDetails.tsx
+function handleEnroll() {
+  navigate(`/courses/${id}/checkout`)   // NEW: go to the payment screen for this course
+}
+
 
   return (
     <section className="rounded-2xl border border-green-100 bg-white/80 p-4 shadow-sm backdrop-blur">
