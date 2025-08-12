@@ -2,11 +2,11 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { useOutletContext } from 'react-router-dom'
 
-type LayoutCtx = { active: 'courses' | 'enrolled' | 'finished' | 'profile'; setActive: (k: LayoutCtx['active']) => void }
+//type LayoutCtx = { active: 'courses' | 'enrolled' | 'finished' | 'profile'; setActive: (k: LayoutCtx['active']) => void }
 
 export default function ProfilePage() {
-  const { setActive } = useOutletContext<LayoutCtx>()
-  useEffect(() => setActive('profile'), [setActive])
+  //const { setActive } = useOutletContext<LayoutCtx>()
+  //useEffect(() => setActive('profile'), [setActive])
 
   return (
     <section className="rounded-2xl border border-green-100 bg-white/80 p-4 shadow-sm backdrop-blur">
