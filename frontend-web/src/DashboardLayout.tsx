@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   AcademicCapIcon,
   BookmarkSquareIcon,
@@ -10,6 +10,7 @@ import {
   XMarkIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
+import { logout } from '@/utils/axiosnapi' // <-- your real API logout
 
 /**
  * DashboardLayout.tsx (STATIC)
@@ -27,6 +28,18 @@ const NAV = [
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
+   const navigate = useNavigate()
+     
+  async function handleLogout() {
+    try {
+      await logout()
+      // With basename="/app", this becomes /app/login
+      navigate('/login')
+    } catch {
+      alert('Logout failed')
+    }
+  }
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-yellow-50 to-white">
@@ -52,6 +65,12 @@ export default function DashboardLayout() {
               className="w-48 bg-transparent placeholder:text-green-700/60 focus:outline-none"
             />
           </div>
+
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 rounded-xl bg-white px-3 py-1.5 text-sm font-medium text-green-900 ring-1 ring-green-200 hover:bg-green-50"
+            title="Log out"
+          ></button>          
         </div>
       </header>
 
