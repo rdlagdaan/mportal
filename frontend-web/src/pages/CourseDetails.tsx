@@ -1,10 +1,16 @@
+// src/pages/CourseDetails.tsx
 import * as React from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useOutletContext } from 'react-router-dom'
 import { courseDetails } from '../data/staticCatalog'
+
+type LayoutCtx = { active: 'courses'|'enrolled'|'finished'|'profile'; setActive: (k: LayoutCtx['active']) => void }
 
 export default function CourseDetails(){
   const { courseId } = useParams()
   const navigate = useNavigate()
+  const ctx = useOutletContext<LayoutCtx | undefined>()
+  React.useEffect(() => { ctx?.setActive('courses') }, [ctx])
+
   const id = Number(courseId)
   const c = courseDetails[id]
 
