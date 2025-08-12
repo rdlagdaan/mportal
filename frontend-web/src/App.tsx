@@ -14,7 +14,7 @@ export default function App() {
   <Routes>
     <Route path="login" element={<TabbedLogin />} />
     <Route element={<DashboardLayout />}>
-      <Route path="courses"  element={<CoursesPage />} />
+      <Route path="/app/courses"  element={<CoursesPage />} />
       <Route path="enrolled" element={<EnrolledPage />} />
       <Route path="finished" element={<FinishedPage />} />
       <Route path="profile"  element={<ProfilePage />} />
