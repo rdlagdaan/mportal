@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { useState } from 'react'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   AcademicCapIcon,
   BookmarkSquareIcon,
@@ -9,23 +9,33 @@ import {
   Bars3Icon,
   XMarkIcon,
   ArrowRightOnRectangleIcon,
+  MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
+import { logout } from '@/utils/axiosnapi' // <-- your real API logout
 
+// Use RELATIVE paths because BrowserRouter uses basename="/app"
 const NAV = [
-  { key: 'courses',  label: 'Courses',          to: '/app/courses',  icon: AcademicCapIcon },
-  { key: 'enrolled', label: 'Enrolled Courses', to: '/app/enrolled', icon: BookmarkSquareIcon },
-  { key: 'finished', label: 'Finished Courses', to: '/app/finished', icon: CheckBadgeIcon },
-  { key: 'profile',  label: 'Student Profile',  to: '/app/profile',  icon: UserCircleIcon },
+  { key: 'courses',  label: 'Courses',          to: 'courses',  icon: AcademicCapIcon },
+  { key: 'enrolled', label: 'Enrolled Courses', to: 'enrolled', icon: BookmarkSquareIcon },
+  { key: 'finished', label: 'Finished Courses', to: 'finished', icon: CheckBadgeIcon },
+  { key: 'profile',  label: 'Student Profile',  to: 'profile',  icon: UserCircleIcon },
 ] as const
 type Key = (typeof NAV)[number]['key']
 
-export default function DashboardLayout() {
+export default function Dashboard() {
   const [active, setActive] = useState<Key>('courses')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const navigate = useNavigate()
 
-  const handleLogout = () => {
-    // later: call your real /api/logout then redirect
-    window.location.replace('/app/login')
+  // ---- REAL LOGOUT ----
+  async function handleLogout() {
+    try {
+      await logout()
+      // With basename="/app", this becomes /app/login
+      navigate('/login')
+    } catch {
+      alert('Logout failed')
+    }
   }
 
   return (
@@ -47,11 +57,19 @@ export default function DashboardLayout() {
             <h1 className="text-lg font-semibold text-green-900">Microcredentials Dashboard</h1>
           </div>
 
-          {/* Logout */}
+          <div className="ml-auto hidden items-center gap-2 rounded-2xl border border-green-100 bg-white px-3 py-1.5 text-sm text-green-900 shadow-sm sm:flex">
+            <MagnifyingGlassIcon className="h-5 w-5 text-green-700/70" />
+            <input
+              placeholder="Quick search (static)"
+              className="w-48 bg-transparent placeholder:text-green-700/60 focus:outline-none"
+            />
+          </div>
+
+          {/* Logout (real) */}
           <button
             onClick={handleLogout}
+            className="flex items-center gap-2 rounded-xl bg-white px-3 py-1.5 text-sm font-medium text-green-900 ring-1 ring-green-200 hover:bg-green-50"
             title="Log out"
-            className="ml-auto inline-flex items-center gap-2 rounded-xl bg-white px-3 py-1.5 text-sm font-medium text-green-900 ring-1 ring-green-200 hover:bg-green-50"
           >
             <ArrowRightOnRectangleIcon className="h-5 w-5" />
             <span className="hidden sm:inline">Logout</span>
@@ -81,11 +99,7 @@ export default function DashboardLayout() {
                   <XMarkIcon className="h-6 w-6" />
                 </button>
               </div>
-              <Sidebar
-                onNavigate={() => {
-                  setSidebarOpen(false)
-                }}
-              />
+              <Sidebar onNavigate={() => setSidebarOpen(false)} />
             </div>
           </div>
         )}
@@ -110,14 +124,13 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
         {NAV.map((item) => (
           <li key={item.key}>
             <NavLink
-              to={item.to}
+              to={item.to} // RELATIVE path, works with basename="/app"
+              end={item.key === 'courses'}
               onClick={onNavigate}
               className={({ isActive }) =>
                 [
                   'group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left',
-                  isActive
-                    ? 'bg-yellow-200/70 text-green-900 ring-2 ring-yellow-300'
-                    : 'text-green-900 hover:bg-yellow-100',
+                  isActive ? 'bg-yellow-200/70 text-green-900 ring-2 ring-yellow-300' : 'text-green-900 hover:bg-yellow-100',
                 ].join(' ')
               }
             >
@@ -127,6 +140,10 @@ function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
           </li>
         ))}
       </ul>
+
+      <div className="mt-auto rounded-xl border border-green-100 bg-white p-3 text-xs text-green-700/70">
+        Prototype only. Content is static.
+      </div>
     </nav>
   )
 }
