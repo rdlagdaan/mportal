@@ -54,16 +54,10 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-green-500 via-lime-400 to-yellow-300" />
-            <h1 className="text-lg font-semibold text-green-900">Microcredentials Dashboard</h1>
+            <h1 className="text-lg font-semibold text-green-900">Microcredentials 111 Dashboard</h1>
           </div>
 
-          {/*<div className="ml-auto hidden items-center gap-2 rounded-2xl border border-green-100 bg-white px-3 py-1.5 text-sm text-green-900 shadow-sm sm:flex">
-            <MagnifyingGlassIcon className="h-5 w-5 text-green-700/70" />
-            <input
-              placeholder="Quick search (static)"
-              className="w-48 bg-transparent placeholder:text-green-700/60 focus:outline-none"
-            />
-          </div>*/}
+
 
           {/* Logout (real) */}
           <button
