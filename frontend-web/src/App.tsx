@@ -9,6 +9,10 @@ import EnrolledPage from './pages/EnrolledPage'
 import FinishedPage from './pages/FinishedPage'
 import ProfilePage from './pages/ProfilePage'
 
+import CertificatePage from './pages/CertificatePage'   // NEW
+import BadgePage from './pages/BadgePage'               // NEW
+import CourseReportPage from './pages/CourseReportPage' // NEW
+
 export default function App() {
   return (
 <BrowserRouter basename="/app">
@@ -17,8 +21,11 @@ export default function App() {
     <Route element={<DashboardLayout />}>
       <Route path="courses"  element={<CoursesPage />} />
        <Route path="courses/:courseId" element={<CourseDetails />} /> 
+       <Route path="courses/:courseId/report" element={<CourseReportPage />} />
       <Route path="enrolled" element={<EnrolledPage />} />
       <Route path="finished" element={<FinishedPage />} />
+       <Route path="finished/:courseId/certificate" element={<CertificatePage />} /> {/* NEW */}
+        <Route path="finished/:courseId/badge" element={<BadgePage />} />              {/* NEW */}
       <Route path="profile"  element={<ProfilePage />} />
     </Route>
     <Route path="dashboard" element={<Navigate to="courses" replace />} />
