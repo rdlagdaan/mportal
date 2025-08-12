@@ -15,10 +15,10 @@ import { logout } from '@/utils/axiosnapi' // <-- your real API logout
 
 // Use RELATIVE paths because BrowserRouter uses basename="/app"
 const NAV = [
-  { key: 'courses',  label: 'Courses',          to: 'courses',  icon: AcademicCapIcon },
-  { key: 'enrolled', label: 'Enrolled Courses', to: 'enrolled', icon: BookmarkSquareIcon },
-  { key: 'finished', label: 'Finished Courses', to: 'finished', icon: CheckBadgeIcon },
-  { key: 'profile',  label: 'Student Profile',  to: 'profile',  icon: UserCircleIcon },
+  { key: 'courses',  label: 'Courses -',          to: 'courses',  icon: AcademicCapIcon },
+  { key: 'enrolled', label: 'Enrolled Courses -', to: 'enrolled', icon: BookmarkSquareIcon },
+  { key: 'finished', label: 'Finished Courses -', to: 'finished', icon: CheckBadgeIcon },
+  { key: 'profile',  label: 'Student Profile -',  to: 'profile',  icon: UserCircleIcon },
 ] as const
 type Key = (typeof NAV)[number]['key']
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-green-500 via-lime-400 to-yellow-300" />
-            <h1 className="text-lg font-semibold text-green-900">Microcredentials 111 Dashboard</h1>
+            <h1 className="text-lg font-semibold text-green-900">Microcredentials 111222 Dashboard</h1>
           </div>
 
 
