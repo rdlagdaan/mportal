@@ -34,7 +34,7 @@ export default function DashboardLayout() {
     try {
       await logout()
       // With basename="/app", this becomes /app/login
-      navigate('/login')
+      navigate('/logout')
     } catch {
       alert('Logout failed')
     }

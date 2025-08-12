@@ -10,28 +10,19 @@ import ProfilePage from './pages/ProfilePage'
 
 export default function App() {
   return (
-    <BrowserRouter basename="/app">
-      <Routes>
-        {/* Public login */}
-        <Route path="login" element={<TabbedLogin />} />
+<BrowserRouter basename="/app">
+  <Routes>
+    <Route path="login" element={<TabbedLogin />} />
+    <Route element={<DashboardLayout />}>
+      <Route path="courses"  element={<CoursesPage />} />
+      <Route path="enrolled" element={<EnrolledPage />} />
+      <Route path="finished" element={<FinishedPage />} />
+      <Route path="profile"  element={<ProfilePage />} />
+    </Route>
+    <Route path="dashboard" element={<Navigate to="courses" replace />} />
+    <Route path="*" element={<Navigate to="/login" replace />} /> {/* ✅ absolute */}
+  </Routes>
+</BrowserRouter>
 
-        {/* Default: land on login */}
-        <Route index element={<Navigate to="login" replace />} />
-
-        {/* Dashboard shell + pages */}
-        <Route element={<DashboardLayout />}>
-          <Route path="courses"  element={<CoursesPage />} />
-          <Route path="enrolled" element={<EnrolledPage />} />
-          <Route path="finished" element={<FinishedPage />} />
-          <Route path="profile"  element={<ProfilePage />} />
-        </Route>
-
-        {/* Optional alias: /app/dashboard -> /app/courses */}
-        <Route path="dashboard" element={<Navigate to="courses" replace />} />
-
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="login" replace />} />
-      </Routes>
-    </BrowserRouter>
   )
 }

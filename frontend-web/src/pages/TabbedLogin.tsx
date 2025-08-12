@@ -41,7 +41,7 @@ export default function TabbedLogin() {
       try {
         const r = await getWithCreds('/me');   // checks cookie session
         if (r.data?.user) {
-          window.location.replace('/app/dashboard'); // already logged in
+          window.location.replace('/courses'); // already logged in
         }
       } catch {
         /* not logged in — stay on /login */
