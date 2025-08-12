@@ -323,16 +323,86 @@ function RegistrationModal({
   return (
     <div className="fixed inset-0 z-50 grid place-items-center p-4">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-2xl rounded-xl bg-white shadow-xl max-h-[90vh] overflow-y-auto">
+      
+      <div className="relative z-10 w-full max-w-2xl rounded-xl bg-white shadow-xl max-h-[90vh] overflow-y-auto"> {/* ⬅️ added max-h and overflow-y */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h3 className="text-lg font-semibold">TUA Microcredentials — Application</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-6">
-          {/* …fields unchanged… */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* (keep your existing inputs here) */}
+            <div className="sm:col-span-1">
+              <label className="block text-sm font-medium text-gray-700">Last name</label>
+              <input
+                value={form.lastName}
+                onChange={(e) => update("lastName", e.target.value)}
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-lg focus:border-emerald-600 focus:ring-emerald-600"
+              />
+            </div>
+            <div className="sm:col-span-1">
+              <label className="block text-sm font-medium text-gray-700">First name</label>
+              <input
+                value={form.firstName}
+                onChange={(e) => update("firstName", e.target.value)}
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-lg focus:border-emerald-600 focus:ring-emerald-600"
+              />
+            </div>
+            <div className="sm:col-span-1">
+              <label className="block text-sm font-medium text-gray-700">Middle name</label>
+              <input
+                value={form.middleName}
+                onChange={(e) => update("middleName", e.target.value)}
+                className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-lg focus:border-emerald-600 focus:ring-emerald-600"
+              />
+            </div>
+
+            <div className="sm:col-span-1">
+              <label className="block text-sm font-medium text-gray-700">Mobile number</label>
+              <input
+                value={form.mobile}
+                onChange={(e) => update("mobile", e.target.value)}
+                inputMode="tel"
+                placeholder="09XXXXXXXXX"
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-lg focus:border-emerald-600 focus:ring-emerald-600"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                value={form.email}
+                onChange={(e) => update("email", e.target.value)}
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-lg focus:border-emerald-600 focus:ring-emerald-600"
+              />
+            </div>
+
+            <div className="sm:col-span-1">
+              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <input
+                type="password"
+                value={form.password}
+                onChange={(e) => update("password", e.target.value)}
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-lg focus:border-emerald-600 focus:ring-emerald-600"
+              />
+            </div>
+
+            <div className="sm:col-span-1">
+              <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
+              <input
+                type="password"
+                value={form.confirmPassword}
+                onChange={(e) => update("confirmPassword", e.target.value)}
+                required
+                className="mt-1 block w-full rounded-md border-gray-300 px-3 py-2 shadow-lg focus:border-emerald-600 focus:ring-emerald-600"
+              />
+            </div>
           </div>
 
           <div className="mt-6 space-y-3">
