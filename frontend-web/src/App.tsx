@@ -6,6 +6,7 @@ import TabbedLogin from './pages/TabbedLogin'      // <- make sure this path mat
 import CoursesPage from './pages/CoursesPage'
 import CourseDetails from './pages/CourseDetails' 
 import EnrolledPage from './pages/EnrolledPage'
+import CoursePortalPage from './pages/CoursePortalPage'
 import FinishedPage from './pages/FinishedPage'
 import ProfilePage from './pages/ProfilePage'
 
@@ -30,6 +31,7 @@ export default function App() {
 
        <Route path="courses/:courseId/report" element={<CourseReportPage />} />
       <Route path="enrolled" element={<EnrolledPage />} />
+        <Route path="courses/:courseId/portal" element={<CoursePortalPage />} />      
       <Route path="finished" element={<FinishedPage />} />
        <Route path="finished/:courseId/certificate" element={<CertificatePage />} /> {/* NEW */}
         <Route path="finished/:courseId/badge" element={<BadgePage />} />              {/* NEW */}

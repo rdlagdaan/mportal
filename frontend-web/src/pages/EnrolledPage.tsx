@@ -42,12 +42,12 @@ export default function EnrolledPage() {
                     </span>
                   </div>
                   <div className="mt-1 text-xs text-green-700/80">{c.schedule}</div>
-                  <Link
-                    to={`/courses/${c.id}`}
-                    className="mt-2 inline-flex w-full items-center justify-center rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
-                  >
-                    Open course
-                  </Link>
+<Link
+  to={`/courses/${c.id}/portal`}
+  className="mt-3 inline-flex w-full items-center justify-center rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700"
+>
+  Open course
+</Link>
                 </div>
               ))}
             </div>
