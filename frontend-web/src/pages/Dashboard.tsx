@@ -8,14 +8,14 @@ import {
   Bars3Icon,
   XMarkIcon,
   MagnifyingGlassIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
 
 /**
- * PROTOTYPE DASHBOARD (STATIC)
- * - Green → Yellow → White theme (matches TabbedLogin)
- * - Sidebar modules: Courses, Enrolled Courses, Finished Courses, Student Profile
- * - Static content on the right panel; no API calls yet
- * - Keyboard/screen-reader friendly; responsive sidebar
+ * Dashboard.tsx (STATIC, NO ROUTER)
+ * - Clicking sidebar items swaps the right panel (no routes, no "Not found")
+ * - Green → Yellow → White theme
+ * - Includes Logout (prototype: redirects to /app/login)
  */
 
 const navItems = [
@@ -24,10 +24,16 @@ const navItems = [
   { key: 'finished', label: 'Finished Courses', icon: CheckBadgeIcon },
   { key: 'profile', label: 'Student Profile', icon: UserCircleIcon },
 ] as const
+type NavKey = (typeof navItems)[number]['key']
 
 export default function Dashboard() {
-  const [active, setActive] = useState<(typeof navItems)[number]['key']>('courses')
+  const [active, setActive] = useState<NavKey>('courses')
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const handleLogout = () => {
+    // later: call POST /api/logout then redirect
+    window.location.replace('/app/login')
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-yellow-50 to-white">
@@ -42,16 +48,28 @@ export default function Dashboard() {
           >
             <Bars3Icon className="h-6 w-6" />
           </button>
+
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-green-500 via-lime-400 to-yellow-300" />
             <h1 className="text-lg font-semibold text-green-900">Microcredentials Dashboard</h1>
           </div>
-          <div className="ml-auto hidden items-center gap-2 rounded-2xl border border-green-100 bg-white px-3 py-1.5 text-sm text-green-900 shadow-sm sm:flex">
-            <MagnifyingGlassIcon className="h-5 w-5 text-green-700/70" />
-            <input
-              placeholder="Quick search (static)"
-              className="w-48 bg-transparent placeholder:text-green-700/60 focus:outline-none"
-            />
+
+          <div className="ml-auto flex items-center gap-2">
+            <div className="hidden items-center gap-2 rounded-2xl border border-green-100 bg-white px-3 py-1.5 text-sm text-green-900 shadow-sm sm:flex">
+              <MagnifyingGlassIcon className="h-5 w-5 text-green-700/70" />
+              <input
+                placeholder="Quick search (static)"
+                className="w-48 bg-transparent placeholder:text-green-700/60 focus:outline-none"
+              />
+            </div>
+            <button
+              onClick={handleLogout}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-1.5 text-sm font-medium text-green-900 ring-1 ring-green-200 hover:bg-green-50"
+              title="Log out"
+            >
+              <ArrowRightOnRectangleIcon className="h-5 w-5" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </div>
       </header>
@@ -105,8 +123,8 @@ function Sidebar({
   active,
   onSelect,
 }: {
-  active: (typeof navItems)[number]['key']
-  onSelect: (k: (typeof navItems)[number]['key']) => void
+  active: NavKey
+  onSelect: (k: NavKey) => void
 }) {
   return (
     <nav
@@ -139,7 +157,7 @@ function Sidebar({
       </ul>
 
       <div className="mt-auto grid gap-2 text-xs text-green-700/70">
-        <div className="rounded-xl border border-green-100 bg-white p-3">
+        <div className="rounded-2xl border border-green-100 bg-white p-3">
           <div className="font-semibold text-green-900">Tip</div>
           <p>Prototype only. Content is static for now.</p>
         </div>
@@ -148,7 +166,9 @@ function Sidebar({
   )
 }
 
-// --- PANELS (static placeholders) ---
+/* --------------------------------
+   PANELS (static placeholders)
+----------------------------------*/
 
 function PanelFrame({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
   return (
@@ -165,50 +185,49 @@ function PanelFrame({ title, subtitle, children }: { title: string; subtitle?: s
 }
 
 function CoursesPanel() {
-  // static programs + courses preview
-const programs = [
-  {
-    id: 1,
-    name: 'Data Analytics',
-    img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=800&auto=format&fit=crop',
-    blurb: 'Hands-on analytics using Python and SQL.',
-    courses: [
-      { id: 11, title: 'Intro to Data Viz', img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=600&auto=format&fit=crop' },
-      { id: 12, title: 'SQL for Analysts', img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=600&auto=format&fit=crop' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Web Development',
-    img: 'https://images.unsplash.com/photo-1529400971008-f566de0e6dfc?q=80&w=800&auto=format&fit=crop',
-    blurb: 'Frontend to backend foundations.',
-    courses: [
-      { id: 21, title: 'React Basics', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=600&auto=format&fit=crop' },
-      { id: 22, title: 'Laravel Essentials', img: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=600&auto=format&fit=crop' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Business Management',
-    img: 'https://images.unsplash.com/photo-1523958203904-cdcb402031fd?q=80&w=800&auto=format&fit=crop',
-    blurb: 'Leadership, finance and marketing foundations.',
-    courses: [
-      { id: 31, title: 'Entrepreneurship Fundamentals', img: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600&auto=format&fit=crop' },
-      { id: 32, title: 'Marketing Essentials', img: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=600&auto=format&fit=crop' },
-    ],
-  },
-  {
-    id: 4,
-    name: 'Hospitality Management',
-    img: 'https://images.unsplash.com/photo-1528909514045-2fa4ac7a08ba?q=80&w=800&auto=format&fit=crop',
-    blurb: 'Hotel operations, service excellence and F&B.',
-    courses: [
-      { id: 41, title: 'Hotel Operations 101', img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=600&auto=format&fit=crop' },
-      { id: 42, title: 'Food & Beverage Service Basics', img: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop' },
-    ],
-  },
-]
-
+  // Four programs, two courses each (static)
+  const programs = [
+    {
+      id: 1,
+      name: 'Data Analytics',
+      img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=800&auto=format&fit=crop',
+      blurb: 'Hands-on analytics using Python and SQL.',
+      courses: [
+        { id: 11, title: 'Intro to Data Viz', img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=600&auto=format&fit=crop' },
+        { id: 12, title: 'SQL for Analysts', img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=600&auto=format&fit=crop' },
+      ],
+    },
+    {
+      id: 2,
+      name: 'Web Development',
+      img: 'https://images.unsplash.com/photo-1529400971008-f566de0e6dfc?q=80&w=800&auto=format&fit=crop',
+      blurb: 'Frontend to backend foundations.',
+      courses: [
+        { id: 21, title: 'React Basics', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=600&auto=format&fit=crop' },
+        { id: 22, title: 'Laravel Essentials', img: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=600&auto=format&fit=crop' },
+      ],
+    },
+    {
+      id: 3,
+      name: 'Business Management',
+      img: 'https://images.unsplash.com/photo-1523958203904-cdcb402031fd?q=80&w=800&auto=format&fit=crop',
+      blurb: 'Leadership, finance and marketing foundations.',
+      courses: [
+        { id: 31, title: 'Entrepreneurship Fundamentals', img: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600&auto=format&fit=crop' },
+        { id: 32, title: 'Marketing Essentials', img: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=600&auto=format&fit=crop' },
+      ],
+    },
+    {
+      id: 4,
+      name: 'Hospitality Management',
+      img: 'https://images.unsplash.com/photo-1528909514045-2fa4ac7a08ba?q=80&w=800&auto=format&fit=crop',
+      blurb: 'Hotel operations, service excellence and F&B.',
+      courses: [
+        { id: 41, title: 'Hotel Operations 101', img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=600&auto=format&fit=crop' },
+        { id: 42, title: 'Food & Beverage Service Basics', img: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop' },
+      ],
+    },
+  ]
 
   return (
     <PanelFrame title="Courses" subtitle="Browse programs and their sample courses (static demo)">
@@ -247,14 +266,14 @@ function EnrolledPanel() {
       title: 'React Basics',
       status: 'Enrolled',
       img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=600&auto=format&fit=crop',
-      schedule: 'Sat 9:00–12:00 (Aug 24 – Sep 21)'
+      schedule: 'Sat 9:00–12:00 (Aug 24 – Sep 21)',
     },
     {
       id: 102,
       title: 'SQL for Analysts',
       status: 'Enrolled',
       img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=600&auto=format&fit=crop',
-      schedule: 'Wed 18:00–20:00 (Aug 20 – Sep 17)'
+      schedule: 'Wed 18:00–20:00 (Aug 20 – Sep 17)',
     },
   ]
 
@@ -291,24 +310,24 @@ function FinishedPanel() {
 
   return (
     <PanelFrame title="Finished Courses" subtitle="Download certificates and badges (static demo)">
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((it) => (
-          <div key={it.id} className="rounded-2xl border border-green-100 bg-white p-3 shadow-sm">
-            <img src={it.img} className="h-36 w-full rounded-xl object-cover" alt="" />
-            <div className="mt-3 font-medium text-green-900">{it.title}</div>
-            <div className="text-sm text-green-700/80">{it.date}</div>
-            <div className="mt-3 flex gap-2">
-              <button className="flex-1 rounded-xl bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
-                Download Certificate
-              </button>
-              <button className="rounded-xl bg-yellow-400 px-3 py-1.5 text-sm font-medium text-green-950 hover:bg-yellow-500">
-                View Badge
-              </button>
-            </div>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {items.map((it) => (
+        <div key={it.id} className="rounded-2xl border border-green-100 bg-white p-3 shadow-sm">
+          <img src={it.img} className="h-36 w-full rounded-xl object-cover" alt="" />
+          <div className="mt-3 font-medium text-green-900">{it.title}</div>
+          <div className="text-sm text-green-700/80">{it.date}</div>
+          <div className="mt-3 flex gap-2">
+            <button className="flex-1 rounded-xl bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700">
+              Download Certificate
+            </button>
+            <button className="rounded-xl bg-yellow-400 px-3 py-1.5 text-sm font-medium text-green-950 hover:bg-yellow-500">
+              View Badge
+            </button>
           </div>
-        ))}
-      </div>
-    </PanelFrame>
+        </div>
+      ))}
+    </div>
+  </PanelFrame>
   )
 }
 
