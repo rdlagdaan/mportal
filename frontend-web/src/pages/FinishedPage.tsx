@@ -2,11 +2,11 @@ import * as React from 'react'
 import { useEffect } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 
-type LayoutCtx = { active: 'courses' | 'enrolled' | 'finished' | 'profile'; setActive: (k: LayoutCtx['active']) => void }
+//type LayoutCtx = { active: 'courses' | 'enrolled' | 'finished' | 'profile'; setActive: (k: LayoutCtx['active']) => void }
 
 export default function FinishedPage() {
-  const { setActive } = useOutletContext<LayoutCtx>()
-  useEffect(() => setActive('finished'), [setActive])
+  //const { setActive } = useOutletContext<LayoutCtx>()
+  //useEffect(() => setActive('finished'), [setActive])
 
   const finished = [
     {
