@@ -19,7 +19,7 @@ export default function App() {
       <Route path="finished" element={<FinishedPage />} />
       <Route path="profile"  element={<ProfilePage />} />
     </Route>
-    <Route path="dashboard" element={<Navigate to="enrolled" replace />} />
+    <Route path="dashboard" element={<Navigate to="courses" replace />} />
     <Route path="*" element={<Navigate to="/login" replace />} /> {/* ✅ absolute */}
   </Routes>
 </BrowserRouter>
