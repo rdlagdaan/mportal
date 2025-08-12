@@ -166,28 +166,49 @@ function PanelFrame({ title, subtitle, children }: { title: string; subtitle?: s
 
 function CoursesPanel() {
   // static programs + courses preview
-  const programs = [
-    {
-      id: 1,
-      name: 'Data Analytics',
-      img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=800&auto=format&fit=crop',
-      blurb: 'Hands-on analytics using Python and SQL.',
-      courses: [
-        { id: 11, title: 'Intro to Data Viz', img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=600&auto=format&fit=crop' },
-        { id: 12, title: 'SQL for Analysts', img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=600&auto=format&fit=crop' },
-      ],
-    },
-    {
-      id: 2,
-      name: 'Web Development',
-      img: 'https://images.unsplash.com/photo-1529400971008-f566de0e6dfc?q=80&w=800&auto=format&fit=crop',
-      blurb: 'Frontend to backend foundations.',
-      courses: [
-        { id: 21, title: 'React Basics', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=600&auto=format&fit=crop' },
-        { id: 22, title: 'Laravel Essentials', img: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=600&auto=format&fit=crop' },
-      ],
-    },
-  ]
+const programs = [
+  {
+    id: 1,
+    name: 'Data Analytics',
+    img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=800&auto=format&fit=crop',
+    blurb: 'Hands-on analytics using Python and SQL.',
+    courses: [
+      { id: 11, title: 'Intro to Data Viz', img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=600&auto=format&fit=crop' },
+      { id: 12, title: 'SQL for Analysts', img: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=600&auto=format&fit=crop' },
+    ],
+  },
+  {
+    id: 2,
+    name: 'Web Development',
+    img: 'https://images.unsplash.com/photo-1529400971008-f566de0e6dfc?q=80&w=800&auto=format&fit=crop',
+    blurb: 'Frontend to backend foundations.',
+    courses: [
+      { id: 21, title: 'React Basics', img: 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=600&auto=format&fit=crop' },
+      { id: 22, title: 'Laravel Essentials', img: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=600&auto=format&fit=crop' },
+    ],
+  },
+  {
+    id: 3,
+    name: 'Business Management',
+    img: 'https://images.unsplash.com/photo-1523958203904-cdcb402031fd?q=80&w=800&auto=format&fit=crop',
+    blurb: 'Leadership, finance and marketing foundations.',
+    courses: [
+      { id: 31, title: 'Entrepreneurship Fundamentals', img: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600&auto=format&fit=crop' },
+      { id: 32, title: 'Marketing Essentials', img: 'https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=600&auto=format&fit=crop' },
+    ],
+  },
+  {
+    id: 4,
+    name: 'Hospitality Management',
+    img: 'https://images.unsplash.com/photo-1528909514045-2fa4ac7a08ba?q=80&w=800&auto=format&fit=crop',
+    blurb: 'Hotel operations, service excellence and F&B.',
+    courses: [
+      { id: 41, title: 'Hotel Operations 101', img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=600&auto=format&fit=crop' },
+      { id: 42, title: 'Food & Beverage Service Basics', img: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop' },
+    ],
+  },
+]
+
 
   return (
     <PanelFrame title="Courses" subtitle="Browse programs and their sample courses (static demo)">
