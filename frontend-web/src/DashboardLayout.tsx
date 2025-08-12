@@ -20,8 +20,8 @@ import { logout } from '@/utils/axiosnapi' // <-- your real API logout
  */
 
 const NAV = [
-  { key: 'enrolled', label: 'Enrolled Courses', to: '/enrolled', icon: BookmarkSquareIcon },
   { key: 'courses', label: 'Courses', to: '/courses', icon: AcademicCapIcon },
+  { key: 'enrolled', label: 'Enrolled Courses', to: '/enrolled', icon: BookmarkSquareIcon },
   { key: 'finished', label: 'Finished Courses', to: '/finished', icon: CheckBadgeIcon },
   { key: 'profile', label: 'Student Profile', to: '/profile', icon: UserCircleIcon },
 ] as const

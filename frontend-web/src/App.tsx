@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import DashboardLayout from './DashboardLayout'
 import TabbedLogin from './pages/TabbedLogin'      // <- make sure this path matches your file
 import CoursesPage from './pages/CoursesPage'
-import EnrolledPage from './pages/EnrolledPage'
+import EnrolledPage from './pages/EnrolledPage.tsx.dev'
 import FinishedPage from './pages/FinishedPage'
 import ProfilePage from './pages/ProfilePage'
 
@@ -14,8 +14,8 @@ export default function App() {
   <Routes>
     <Route path="login" element={<TabbedLogin />} />
     <Route element={<DashboardLayout />}>
-      <Route path="enrolled" element={<EnrolledPage />} />
       <Route path="courses"  element={<CoursesPage />} />
+      <Route path="enrolled" element={<EnrolledPage />} />
       <Route path="finished" element={<FinishedPage />} />
       <Route path="profile"  element={<ProfilePage />} />
     </Route>
