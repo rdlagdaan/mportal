@@ -132,6 +132,8 @@ Route::prefix('api')->middleware(['web'])->group(function () {
         ->middleware(['throttle:30,1'])
         ->name('micro.login');
 
+
+
     // Authenticated "who am I" for SPA
     Route::get('/me', function (\Illuminate\Http\Request $request) {
         return response()->json([
@@ -149,12 +151,40 @@ Route::prefix('api')->middleware(['web'])->group(function () {
         ->middleware(['auth:sanctum','permission:micro.view-status','throttle:60,1']);
 
     // Logout (JSON)
-    Route::post('/logout', function (\Illuminate\Http\Request $request) {
+    /*Route::post('/logout', function (\Illuminate\Http\Request $request) {
         \Illuminate\Support\Facades\Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return response()->json(['ok' => true, 'message' => 'Logged out']);
-    })->middleware(['auth:sanctum']);
+    })->middleware(['auth:sanctum']);*/
+
+    Route::post('/logout', function (Request $request) {
+        // 1) End the auth session and rotate CSRF
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        // 2) Figure out cookie names/domains
+        $domain = config('session.domain');                   // e.g. mportal-production.up.railway.app
+        $sessionCookie = config('session.cookie', 'laravel_session'); // e.g. mportal_session
+
+        // 3) Build cookie "forgets" (covers domain + no-domain, and "/" + "/app")
+        $forgets = [
+            Cookie::forget('XSRF-TOKEN', '/', $domain),
+            Cookie::forget($sessionCookie, '/', $domain),
+            Cookie::forget('XSRF-TOKEN', '/app', $domain),
+            Cookie::forget($sessionCookie, '/app', $domain),
+            Cookie::forget('XSRF-TOKEN', '/'),
+            Cookie::forget($sessionCookie, '/'),
+        ];
+
+        // 4) Return JSON + attach cookie deletions
+        $resp = response()->json(['ok' => true, 'message' => 'Logged out']);
+        foreach ($forgets as $c) { $resp->withCookie($c); }
+        return $resp;
+    })->middleware(['auth:sanctum']); // routes/web.php already has 'web' by default
+
+
 });
 
 /*
