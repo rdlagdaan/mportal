@@ -2,7 +2,7 @@ export type CourseListItem = { id:number; title:string; img:string }
 export type Program = { id:number; name:string; img:string; blurb:string; courses:CourseListItem[] }
 
 export const programs: Program[] = [
-  {
+  /*{
     id: 1,
     name: 'Data Analytics',
     img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=800&auto=format&fit=crop',
@@ -41,7 +41,44 @@ export const programs: Program[] = [
       { id: 41, title: 'Hotel Operations 101', img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=600&auto=format&fit=crop' },
       { id: 42, title: 'Food & Beverage Service Basics', img: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?q=80&w=600&auto=format&fit=crop' },
     ],
+  },*/
+
+{
+    id: 5,
+    name: 'Healthcare Hospitality & Tourism Concierge',
+    img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=800&auto=format&fit=crop',
+    blurb: 'Concierge, cross-cultural communication, and wellness coordination for medical travelers.',
+    courses: [
+      { id: 43, title: 'Healthcare Hospitality & Tourism Concierge', img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=600&auto=format&fit=crop' },
+      { id: 44, title: 'Cross-Cultural Healthcare Hospitality & Tourism Communication', img: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=600&auto=format&fit=crop' },
+      { id: 45, title: 'Healthcare Travel & Wellness Coordination', img: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=600&auto=format&fit=crop' },
+      { id: 46, title: 'Case Management & Ethical Practices', img: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?q=80&w=600&auto=format&fit=crop' },
+      { id: 47, title: 'Practicum in Healthcare Hospitality & Tourism Concierge', img: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?q=80&w=600&auto=format&fit=crop' }
+    ]
   },
+  {
+    id: 6,
+    name: 'Community Pharmacy',
+    img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=800&auto=format&fit=crop',
+    blurb: 'Operations, workflow, and inventory foundations for pharmacy practice.',
+    courses: [
+      { id: 51, title: 'Workplace Health & Safety (Community Pharmacy)', img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=600&auto=format&fit=crop' },
+      { id: 52, title: 'Community Pharmacy Workflow', img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=600&auto=format&fit=crop' },
+      { id: 53, title: 'Community Pharmacy Supplies & Inventory', img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=600&auto=format&fit=crop' },
+      { id: 54, title: 'Pharmacy Service Promotion', img: 'https://images.unsplash.com/photo-1556745753-b2904692b3cd?q=80&w=600&auto=format&fit=crop' },
+      { id: 55, title: 'Prescription Evaluation & Services', img: 'https://images.unsplash.com/photo-1584367369853-8b966cf2234e?q=80&w=600&auto=format&fit=crop' },
+      { id: 56, title: 'Community Pharmacy Infection Control', img: 'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?q=80&w=600&auto=format&fit=crop' },
+      { id: 57, title: 'Self-care: Cough & Colds Assessment', img: 'https://images.unsplash.com/photo-1554188248-986adbb73be2?q=80&w=600&auto=format&fit=crop' },
+      { id: 58, title: 'Self-care: Skin Conditions Assessment', img: 'https://images.unsplash.com/photo-1505575972945-2804b50c68f0?q=80&w=600&auto=format&fit=crop' },
+      { id: 59, title: 'Self-care: GIT Conditions Assessment', img: 'https://images.unsplash.com/photo-1551190822-a9333d879b1f?q=80&w=600&auto=format&fit=crop' },
+      { id: 60, title: 'Self-care: Allergy Assessment', img: 'https://images.unsplash.com/photo-1615485737651-3c5b4c3f6f5b?q=80&w=600&auto=format&fit=crop' },
+      { id: 61, title: 'Self-care: Pain Assessment', img: 'https://images.unsplash.com/photo-1529686342291-8a3f3e03f923?q=80&w=600&auto=format&fit=crop' }
+    ]
+  }
+
+
+
+
 ]
 
 export type CourseDetail = {
@@ -51,7 +88,7 @@ export type CourseDetail = {
 }
 
 export const courseDetails: Record<number, CourseDetail> = {
-  /*11: {
+ /* 11: {
     id:11,
     title:'Intro to Data Viz',
     program:'Data Analytics',
