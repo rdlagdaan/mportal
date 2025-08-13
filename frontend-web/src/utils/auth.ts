@@ -9,36 +9,20 @@ async function ensureCsrf() {
   }
 }
 
+// src/utils/auth.ts
 export async function logoutAndClean() {
   try {
-    await ensureCsrf()
-
-    // Call your existing Laravel 12 route: POST /logout (in web.php)
     await fetch('/logout', {
       method: 'POST',
       credentials: 'include',
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
-        'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') ?? '',
-        'Content-Type': 'application/json',
+        'X-XSRF-TOKEN': (document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? ''),
       },
-    })
-  } catch {
-    // ignore — we’ll still clear locally
-  } finally {
-    // Best-effort client cleanup (server should also be expiring cookies)
-    clearCookieEverywhere('XSRF-TOKEN')
-    clearCookieEverywhere(SESSION_COOKIE_NAME)
-    clearCookieEverywhere('laravel_session') // in case the name was used previously
-
-    // Optional: clear app caches
-    sessionStorage.clear()
-    // localStorage.removeItem('...') // if you store auth flags
-
-    // Hard redirect to login to ensure a clean state
-     const SPA_BASE = '/app'   // 👈 your BrowserRouter basename
-    window.location.href = `${SPA_BASE}/login`  // 👈 was '/login'  
-   
-    //window.location.href = '/login'
+    });
+  } catch {} finally {
+    // ...clear cookies if you added that earlier...
+    window.location.href = '/app/login'; // 👈 important
   }
 }
+
