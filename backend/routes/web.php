@@ -151,14 +151,14 @@ Route::prefix('api')->middleware(['web'])->group(function () {
         ->middleware(['auth:sanctum','permission:micro.view-status','throttle:60,1']);
 
     // Logout (JSON)
-    /*Route::post('/logout', function (\Illuminate\Http\Request $request) {
+    Route::post('/logout', function (\Illuminate\Http\Request $request) {
         \Illuminate\Support\Facades\Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return response()->json(['ok' => true, 'message' => 'Logged out']);
-    })->middleware(['auth:sanctum']);*/
+    })->middleware(['auth:sanctum']);
 
-    Route::post('/logout', function (Request $request) {
+    /*Route::post('/logout', function (Request $request) {
         // 1) End the auth session and rotate CSRF
         Auth::guard('web')->logout();
         $request->session()->invalidate();
@@ -182,7 +182,7 @@ Route::prefix('api')->middleware(['web'])->group(function () {
         $resp = response()->json(['ok' => true, 'message' => 'Logged out']);
         foreach ($forgets as $c) { $resp->withCookie($c); }
         return $resp;
-    })->middleware(['auth:sanctum']); // routes/web.php already has 'web' by default
+    })->middleware(['auth:sanctum']); // routes/web.php already has 'web' by default*/
 
 
 });

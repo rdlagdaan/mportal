@@ -148,8 +148,8 @@ const CSRF_URL =
 const napi = axios.create({
   baseURL,               // e.g. "https://host/app/../api" (normalized)
   withCredentials: true, // send/receive Sanctum cookies
-  xsrfCookieName: 'XSRF-TOKEN',
-  xsrfHeaderName: 'X-XSRF-TOKEN',
+  //xsrfCookieName: 'XSRF-TOKEN',
+  //xsrfHeaderName: 'X-XSRF-TOKEN',
 });
 (napi.defaults.headers.common as any)["X-Requested-With"] = "XMLHttpRequest";
 

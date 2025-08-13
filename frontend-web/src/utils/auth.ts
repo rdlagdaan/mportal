@@ -36,6 +36,9 @@ export async function logoutAndClean() {
     // localStorage.removeItem('...') // if you store auth flags
 
     // Hard redirect to login to ensure a clean state
-    window.location.href = '/login'
+     const SPA_BASE = '/app'   // 👈 your BrowserRouter basename
+    window.location.href = `${SPA_BASE}/login`  // 👈 was '/login'  
+   
+    //window.location.href = '/login'
   }
 }
