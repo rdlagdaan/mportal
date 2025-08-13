@@ -1,6 +1,5 @@
-import { getCookie, clearCookieEverywhere } from './cookies'
+import { clearCookieEverywhere, getCookie } from './cookies' // ← adjust if needed
 
-// Match your .env: SESSION_COOKIE=mportal_session
 const SESSION_COOKIE_NAME = 'mportal_session'
 
 async function ensureCsrf() {
@@ -9,20 +8,24 @@ async function ensureCsrf() {
   }
 }
 
-// src/utils/auth.ts
 export async function logoutAndClean() {
   try {
-    await fetch('/logout', {
+    await ensureCsrf()
+    const res = await fetch('/api/logout', {
       method: 'POST',
       credentials: 'include',
       headers: {
         'X-Requested-With': 'XMLHttpRequest',
-        'X-XSRF-TOKEN': (document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? ''),
+        'X-XSRF-TOKEN': getCookie('XSRF-TOKEN') ?? '',
       },
-    });
-  } catch {} finally {
-    // ...clear cookies if you added that earlier...
-    window.location.href = '/app/login'; // 👈 important
+    })
+    console.log('logout status', res.status)
+  } catch (err) {
+    console.warn('logout error', err)
+  } finally {
+    clearCookieEverywhere('XSRF-TOKEN')
+    clearCookieEverywhere(SESSION_COOKIE_NAME)
+    clearCookieEverywhere('laravel_session')
+    window.location.href = '/app/login'  // important: SPA lives under /app
   }
 }
-
