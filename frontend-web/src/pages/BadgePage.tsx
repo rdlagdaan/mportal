@@ -5,6 +5,13 @@ import { courseDetails } from '../data/staticCatalog'
 
 type LayoutCtx = { active:'courses'|'enrolled'|'finished'|'profile'; setActive:(k:LayoutCtx['active'])=>void }
 
+const PROGRAM_BADGE: Record<string, string> = {
+  'Business Management': '/BUSINESSBADGE.png',
+  'Community Pharmacy': '/PHARMACYBADGE.png',
+  'Hospitality Management': '/TOURISMBADGE.png',
+  'Healthcare Hospitality & Tourism Concierge': '/TOURISMBADGE.png',
+}
+
 export default function BadgePage() {
   const { courseId } = useParams()
   const ctx = useOutletContext<LayoutCtx | undefined>()
@@ -17,45 +24,50 @@ export default function BadgePage() {
   React.useEffect(() => {
     if (!c || !canvasRef.current) return
     const canvas = canvasRef.current
-    canvas.width = 700
-    canvas.height = 700
     const g = canvas.getContext('2d')!
 
-    // bg
-    g.fillStyle = '#ffffff'
-    g.fillRect(0,0,canvas.width,canvas.height)
+    // square canvas for badge PNGs
+    canvas.width = 740
+    canvas.height = 740
 
-    // outer ring gradient
-    const grad = g.createLinearGradient(0,0,700,700)
-    grad.addColorStop(0,'#16a34a')
-    grad.addColorStop(.5,'#84cc16')
-    grad.addColorStop(1,'#facc15')
+    const badge = new Image()
+    badge.onload = () => {
+      // white bg for transparent PNG edges
+      g.fillStyle = '#ffffff'
+      g.fillRect(0,0,canvas.width,canvas.height)
 
-    g.beginPath()
-    g.arc(350,350,300,0,Math.PI*2)
-    g.fillStyle = grad
-    g.fill()
+      // center badge and keep aspect
+      const pad = 40
+      const w = canvas.width - pad*2
+      const h = canvas.height - pad*2 - 110 // leave room for title
+      g.imageSmoothingQuality = 'high'
+      g.drawImage(badge, pad, pad, w, h)
 
-    // inner circle
-    g.beginPath()
-    g.arc(350,350,250,0,Math.PI*2)
-    g.fillStyle = '#ffffff'
-    g.fill()
+      // course title under badge (two lines max)
+      g.fillStyle = '#065f46'
+      g.textAlign = 'center'
+      g.font = '700 28px system-ui, -apple-system, Segoe UI, Roboto'
+      wrapCenter(g, c.title, canvas.width/2, canvas.height - 70, canvas.width - 80, 32)
+    }
+    badge.src = PROGRAM_BADGE[c.program] ?? PROGRAM_BADGE['Business Management']
 
-    // cap icon (simple)
-    g.fillStyle = '#065f46'
-    g.beginPath()
-    g.moveTo(210,330); g.lineTo(350,285); g.lineTo(490,330); g.lineTo(350,375); g.closePath(); g.fill()
-    g.fillRect(300,375,100,18)
-
-    // text
-    g.fillStyle = '#065f46'
-    g.font = 'bold 28px system-ui'
-    g.textAlign = 'center'
-    g.fillText('TUA Microcredential', 350, 430)
-    g.font = 'bold 34px system-ui'
-    g.fillText(c ? c.title : 'Course', 350, 470)
-
+    function wrapCenter(ctx:CanvasRenderingContext2D, text:string, x:number, y:number, maxWidth:number, lineHeight:number) {
+      const words = text.split(' ')
+      const lines:string[] = []
+      let line = ''
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' '
+        if (ctx.measureText(testLine).width > maxWidth && n > 0) {
+          lines.push(line.trim())
+          line = words[n] + ' '
+        } else {
+          line = testLine
+        }
+      }
+      lines.push(line.trim())
+      const startY = y - ((lines.length - 1) * lineHeight) / 2
+      lines.slice(0,2).forEach((ln, i) => ctx.fillText(ln, x, startY + i*lineHeight))
+    }
   }, [c])
 
   if (!c) {

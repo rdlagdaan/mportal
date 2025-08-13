@@ -5,6 +5,26 @@ import { courseDetails } from '../data/staticCatalog'
 
 type LayoutCtx = { active:'courses'|'enrolled'|'finished'|'profile'; setActive:(k:LayoutCtx['active'])=>void }
 
+const PROGRAM_ASSETS: Record<string, { cert:string; badge:string }> = {
+  'Business Management': {
+    cert: '/CertificateBusiness.jpg',
+    badge: '/BUSINESSBADGE.png',
+  },
+  'Community Pharmacy': {
+    cert: '/CertificatePharmacyBlank.jpg',
+    badge: '/PHARMACYBADGE.png',
+  },
+  'Hospitality Management': {
+    cert: '/CertificateTourismBlank.jpg',
+    badge: '/TOURISMBADGE.png',
+  },
+  // If you also show the new concierge track, map it to the Tourism template:
+  'Healthcare Hospitality & Tourism Concierge': {
+    cert: '/CertificateTourismBlank.jpg',
+    badge: '/TOURISMBADGE.png',
+  },
+}
+
 export default function CertificatePage() {
   const { courseId } = useParams()
   const ctx = useOutletContext<LayoutCtx | undefined>()
@@ -16,56 +36,72 @@ export default function CertificatePage() {
 
   React.useEffect(() => {
     if (!c || !canvasRef.current) return
+
+    const assets = PROGRAM_ASSETS[c.program] ?? PROGRAM_ASSETS['Business Management']
     const canvas = canvasRef.current
-    canvas.width = 1200
-    canvas.height = 800
     const g = canvas.getContext('2d')!
-    // bg
-    g.fillStyle = '#fff'
-    g.fillRect(0, 0, canvas.width, canvas.height)
-    // border (TUA gradient)
-    const grad = g.createLinearGradient(0,0,canvas.width,0)
-    grad.addColorStop(0,'#16a34a')   // green-600
-    grad.addColorStop(.5,'#84cc16')  // lime-500
-    grad.addColorStop(1,'#facc15')   // yellow-400
-    g.lineWidth = 14
-    g.strokeStyle = grad
-    g.strokeRect(18,18,canvas.width-36,canvas.height-36)
 
-    // heading
-    g.fillStyle = '#065f46' // emerald-800-ish
-    g.font = 'bold 46px system-ui, -apple-system, Segoe UI, Roboto'
-    g.fillText('Certificate of Completion', 350, 140)
+    // Target output size matches provided backgrounds (landscape A4-ish)
+    canvas.width = 1400
+    canvas.height = 1080
 
-    // student (static prototype)
-    g.font = '28px system-ui'
-    g.fillStyle = '#14532d'
-    g.fillText('This certifies that', 480, 220)
+    const bg = new Image()
+    const badge = new Image()
+    let loaded = 0
+    const done = () => {
+      if (++loaded < 2) return
 
-    g.font = 'bold 54px system-ui'
-    g.fillStyle = '#166534'
-    g.fillText('Randy Lagdaan', 430, 290)
+      // draw certificate background
+      g.drawImage(bg, 0, 0, canvas.width, canvas.height)
 
-    // course title
-    g.font = '28px system-ui'
-    g.fillStyle = '#065f46'
-    g.fillText('has successfully completed the course', 380, 350)
+      // draw badge (bottom-left)
+      const badgeW = 220
+      const badgeH = 320
+      g.drawImage(badge, 90, canvas.height - badgeH - 120, badgeW, badgeH)
 
-    g.font = 'bold 36px system-ui'
-    g.fillStyle = '#065f46'
-    g.fillText(c.title, 380, 395)
+      // text styling
+      g.fillStyle = '#0b3b2e'
+      g.textAlign = 'left'
 
-    // details row
-    g.font = '22px system-ui'
-    g.fillStyle = '#064e3b'
-    g.fillText(`Program: ${c.program}`, 380, 450)
-    g.fillText(`Duration: ${c.duration}`, 380, 485)
-    g.fillText(`Approved on: ${new Date().toLocaleDateString()}`, 380, 520)
+      // student (static prototype)
+      g.font = '700 48px system-ui, -apple-system, Segoe UI, Roboto'
+      g.fillText('Randy Lagdaan', 420, 560)
 
-    // footer
-    g.font = 'bold 20px system-ui'
-    g.fillStyle = '#065f46'
-    g.fillText('Trinity University of Asia — Microcredentials', 380, 580)
+      // course title
+      g.font = '700 42px system-ui, -apple-system, Segoe UI, Roboto'
+      wrapText(g, c.title, 420, 620, 860, 48)
+
+      // program + duration
+      g.font = '500 26px system-ui, -apple-system, Segoe UI, Roboto'
+      g.fillText(`Program: ${c.program}`, 420, 700)
+      g.fillText(`Duration: ${c.duration}`, 420, 740)
+
+      // approved date (today for prototype)
+      const approved = new Date().toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' })
+      g.fillText(`Approved on: ${approved}`, 420, 780)
+    }
+
+    bg.onload = done
+    badge.onload = done
+    bg.src = assets.cert
+    badge.src = assets.badge
+
+    function wrapText(ctx:CanvasRenderingContext2D, text:string, x:number, y:number, maxWidth:number, lineHeight:number) {
+      const words = text.split(' ')
+      let line = ''
+      for (let n = 0; n < words.length; n++) {
+        const testLine = line + words[n] + ' '
+        const metrics = ctx.measureText(testLine)
+        if (metrics.width > maxWidth && n > 0) {
+          ctx.fillText(line.trim(), x, y)
+          line = words[n] + ' '
+          y += lineHeight
+        } else {
+          line = testLine
+        }
+      }
+      ctx.fillText(line.trim(), x, y)
+    }
   }, [c])
 
   if (!c) {

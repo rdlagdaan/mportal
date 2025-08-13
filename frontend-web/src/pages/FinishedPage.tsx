@@ -10,10 +10,22 @@ export default function FinishedPage() {
 
   const finished = [
     {
-      id: 11, // Intro to Data Viz
-      title: 'Intro to Data Viz',
-      img: 'https://images.unsplash.com/photo-1551281044-8e8b89f0ee3b?q=80&w=600&auto=format&fit=crop',
-      approvedOn: 'Aug 3, 2025',
+        id: 31, // Business Management
+        title: 'Entrepreneurship Fundamentals',
+        img: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600&auto=format&fit=crop',
+        approvedOn: 'Aug 3, 2025',
+    },
+    {
+        id: 41, // Hospitality Management
+        title: 'Hotel Operations 101',
+        img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=600&auto=format&fit=crop',
+        approvedOn: 'Aug 10, 2025',
+    },
+    {
+        id: 51, // Community Pharmacy
+        title: 'Workplace Health & Safety (Community Pharmacy)',
+        img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=600&auto=format&fit=crop',
+        approvedOn: 'Aug 17, 2025',
     },
   ]
 
