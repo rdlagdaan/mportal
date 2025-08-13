@@ -13,7 +13,7 @@ import {
   ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline'
 import { logout } from '@/utils/axiosnapi'
-import { logoutAndClean } from '@/utils/auth' // adjust the path if needed
+//import { logoutAndClean } from '@/utils/auth' // adjust the path if needed
 /**
  * DashboardLayout (TUA themed)
  * - Prominent green ↔ yellow ↔ white palette
@@ -34,13 +34,13 @@ export default function DashboardLayout() {
   const navigate = useNavigate()
 
   async function handleLogout() {
-    /*try {
+    try {
       await logout()
       navigate('/login', { replace: true }) // basename=/app -> /app/login
     } catch {
       alert('Logout failed')
-    }*/
-   logoutAndClean()
+    }
+   //logoutAndClean()
   }
 
   return (
