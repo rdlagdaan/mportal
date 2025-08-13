@@ -20,7 +20,7 @@ export type EnrolledProgram = {
  * Course IDs align with `courseDetails` so /courses/:id works.
  */
 export const enrolledPrograms: EnrolledProgram[] = [
-  {
+ /* {
     id: 2,
     name: 'Web Development',
     img: 'https://images.unsplash.com/photo-1529400971008-f566de0e6dfc?q=80&w=800&auto=format&fit=crop',
@@ -50,4 +50,66 @@ export const enrolledPrograms: EnrolledProgram[] = [
       },
     ],
   },
+]
+
+
+[*/
+  {
+    "id": 4,
+    "name": "Healthcare Hospitality & Tourism Concierge",
+    "img": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=800&auto=format&fit=crop",
+    "blurb": "Concierge, cross‑cultural comms, and wellness coordination for medical travelers.",
+    "courses": [
+      {
+        "id": 43,
+        "title": "Healthcare Hospitality & Tourism Concierge",
+        "img": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=600&auto=format&fit=crop",
+        "schedule": "Mon 18:00–21:00 (Sep 1 – Sep 15)",
+        "status": "Enrolled"
+      },
+      {
+        "id": 44,
+        "title": "Cross‑Cultural Healthcare Hospitality & Tourism Communication",
+        "img": "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=600&auto=format&fit=crop",
+        "schedule": "Wed 18:00–21:00 (Sep 3 – Sep 17)",
+        "status": "Enrolled"
+      },
+      {
+        "id": 45,
+        "title": "Healthcare Travel & Wellness Coordination",
+        "img": "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=600&auto=format&fit=crop",
+        "schedule": "Fri 18:00–21:00 (Sep 5 – Sep 19)",
+        "status": "Enrolled"
+      }
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Community Pharmacy",
+    "img": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=800&auto=format&fit=crop",
+    "blurb": "Operations, workflow, and inventory foundations for pharmacy practice.",
+    "courses": [
+      {
+        "id": 51,
+        "title": "Workplace Health & Safety (Community Pharmacy)",
+        "img": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=600&auto=format&fit=crop",
+        "schedule": "Tue 18:00–21:00 (Aug 26 – Sep 9)",
+        "status": "Enrolled"
+      },
+      {
+        "id": 52,
+        "title": "Community Pharmacy Workflow",
+        "img": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=600&auto=format&fit=crop",
+        "schedule": "Thu 18:00–21:00 (Aug 28 – Sep 11)",
+        "status": "Enrolled"
+      },
+      {
+        "id": 53,
+        "title": "Community Pharmacy Supplies & Inventory",
+        "img": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=600&auto=format&fit=crop",
+        "schedule": "Sat 9:00–12:00 (Aug 30 – Sep 13)",
+        "status": "Enrolled"
+      }
+    ]
+  }
 ]

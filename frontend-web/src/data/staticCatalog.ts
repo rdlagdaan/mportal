@@ -51,7 +51,7 @@ export type CourseDetail = {
 }
 
 export const courseDetails: Record<number, CourseDetail> = {
-  11: {
+  /*11: {
     id:11,
     title:'Intro to Data Viz',
     program:'Data Analytics',
@@ -147,6 +147,81 @@ export const courseDetails: Record<number, CourseDetail> = {
     price:{currency:'PHP', amount:3400},
     teacher:{name:'Paolo Reyes', title:'F&B Trainer', avatar:'https://images.unsplash.com/photo-1544006659-f0b21884ce1d?q=80&w=200&auto=format&fit=crop'}
   },
+}
+*/
+
+  43: {
+    id: 43,
+    title: 'Healthcare Hospitality & Tourism Concierge',
+    program: 'Healthcare Hospitality & Tourism Concierge',
+    img: 'https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?q=80&w=1200&auto=format&fit=crop',
+    description: 'Front office, care navigation, and guest-relations basics for healthcare travelers.',
+    sampleOutline: ['Role of concierge', 'Care-navigation workflow', 'Service recovery', 'KPIs & handoffs'],
+    duration: '3 weeks (18 hours total)',
+    schedule: 'Mon 18:00–21:00, Sep 1 – Sep 15',
+    price: { currency: 'PHP', amount: 3600 },
+    teacher: { name: 'A. Sabillano', title: 'Concierge Program Lead', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=200&auto=format&fit=crop' }
+  },
+  44: {
+    id: 44,
+    title: 'Cross-Cultural Healthcare Hospitality & Tourism Communication',
+    program: 'Healthcare Hospitality & Tourism Concierge',
+    img: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1200&auto=format&fit=crop',
+    description: 'Communicate with empathy across cultures in medical travel and hospitality settings.',
+    sampleOutline: ['Cultural frameworks', 'Language & tone', 'De-escalation', 'Case role-plays'],
+    duration: '3 weeks (18 hours total)',
+    schedule: 'Wed 18:00–21:00, Sep 3 – Sep 17',
+    price: { currency: 'PHP', amount: 3600 },
+    teacher: { name: 'A. Sabillano', title: 'Hospitality Communications Trainer', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop' }
+  },
+  45: {
+    id: 45,
+    title: 'Healthcare Travel & Wellness Coordination',
+    program: 'Healthcare Hospitality & Tourism Concierge',
+    img: 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1200&auto=format&fit=crop',
+    description: 'Plan end-to-end patient journeys: itineraries, wellness add-ons, and vendor coordination.',
+    sampleOutline: ['Journey mapping', 'Wellness packages', 'Vendor SLAs', 'Quality assurance'],
+    duration: '3 weeks (18 hours total)',
+    schedule: 'Fri 18:00–21:00, Sep 5 – Sep 19',
+    price: { currency: 'PHP', amount: 3800 },
+    teacher: { name: 'A. Sabillano', title: 'Wellness Coordination Specialist', avatar: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=200&auto=format&fit=crop' }
+  },
+  51: {
+    id: 51,
+    title: 'Workplace Health & Safety (Community Pharmacy)',
+    program: 'Community Pharmacy',
+    img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1200&auto=format&fit=crop',
+    description: 'Safety standards, incident response, and regulatory basics for pharmacy operations.',
+    sampleOutline: ['OSHA/DOH basics', 'Hazard controls', 'Incident reporting', 'Emergency drills'],
+    duration: '3 weeks (18 hours total)',
+    schedule: 'Tue 18:00–21:00, Aug 26 – Sep 9',
+    price: { currency: 'PHP', amount: 3400 },
+    teacher: { name: 'R. Tambis & L. Sim', title: 'Pharmacy Operations Trainers', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?q=80&w=200&auto=format&fit=crop' }
+  },
+  52: {
+    id: 52,
+    title: 'Community Pharmacy Workflow',
+    program: 'Community Pharmacy',
+    img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1200&auto=format&fit=crop',
+    description: 'From script intake to counseling: streamline daily pharmacy tasks.',
+    sampleOutline: ['Intake & triage', 'Dispensing flow', 'Counseling steps', 'Quality checks'],
+    duration: '3 weeks (18 hours total)',
+    schedule: 'Thu 18:00–21:00, Aug 28 – Sep 11',
+    price: { currency: 'PHP', amount: 3600 },
+    teacher: { name: 'R. Tambis & L. Sim', title: 'Community Pharmacy Coaches', avatar: 'https://images.unsplash.com/photo-1556157382-97eda2d62296?q=80&w=200&auto=format&fit=crop' }
+  },
+  53: {
+    id: 53,
+    title: 'Community Pharmacy Supplies & Inventory',
+    program: 'Community Pharmacy',
+    img: 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=1200&auto=format&fit=crop',
+    description: 'Forecasting, storage, FEFO, and audit routines to keep stock safe and available.',
+    sampleOutline: ['FEFO & cold chain', 'Reorder points', 'Cycle counts', 'Shrink control'],
+    duration: '3 weeks (18 hours total)',
+    schedule: 'Sat 9:00–12:00, Aug 30 – Sep 13',
+    price: { currency: 'PHP', amount: 3600 },
+    teacher: { name: 'R. Tambis & L. Sim', title: 'Inventory & Compliance Leads', avatar: 'https://images.unsplash.com/photo-1544723795-3fb6469f5b39?q=80&w=200&auto=format&fit=crop' }
+  }
 }
 
 
