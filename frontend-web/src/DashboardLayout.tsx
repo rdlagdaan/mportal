@@ -22,12 +22,14 @@ import { logoutAndClean } from '@/utils/auth' // adjust the path if needed
  * - Accessible focus/hover states
  */
 
+// src/DashboardLayout.tsx
 const NAV = [
   { key: 'courses',  label: 'Courses',          to: '/courses',  icon: AcademicCapIcon },
   { key: 'enrolled', label: 'Enrolled Courses', to: '/enrolled', icon: BookmarkSquareIcon },
   { key: 'finished', label: 'Finished Courses', to: '/finished', icon: CheckBadgeIcon },
   { key: 'profile',  label: 'Student Profile',  to: '/profile',  icon: UserCircleIcon },
 ] as const
+
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)

@@ -9,9 +9,9 @@ class ModuleAccessController extends Controller
 {
     public function userModules(): JsonResponse
     {
-        $userId = Auth::id();
-        //$userId = 1;
-        $data = DB::table('application_users as au')
+        $userId = \Illuminate\Support\Facades\Auth::id();
+
+        $data = \DB::table('application_users as au')
             ->join('application_sub_modules as asm', 'au.application_sub_module_id', '=', 'asm.id')
             ->join('application_modules as am', 'asm.application_module_id', '=', 'am.id')
             ->join('system_mains as sm', 'am.system_main_id', '=', 'sm.id')
@@ -29,36 +29,33 @@ class ModuleAccessController extends Controller
                 'asm.component_path'
             ]);
 
+        if ($data->isEmpty()) {
+            return response()->json([], 204);
+        }
+
+        // build hierarchy (your code) ...
         $hierarchy = [];
-
         foreach ($data as $row) {
-            $systemId = $row->system_id;
-            $moduleId = $row->module_id;
+            $sid = $row->system_id;
+            $mid = $row->module_id;
 
-            if (!isset($hierarchy[$systemId])) {
-                $hierarchy[$systemId] = [
-                    'system_id' => $systemId,
-                    'system_name' => $row->system_name,
-                    'modules' => []
-                ];
-            }
-
-            if (!isset($hierarchy[$systemId]['modules'][$moduleId])) {
-                $hierarchy[$systemId]['modules'][$moduleId] = [
-                    'module_id' => $moduleId,
-                    'module_name' => $row->module_name,
-                    'sub_modules' => []
-                ];
-            }
-
-            $hierarchy[$systemId]['modules'][$moduleId]['sub_modules'][] = [
+            $hierarchy[$sid] ??= [
+                'system_id' => $sid,
+                'system_name' => $row->system_name,
+                'modules' => []
+            ];
+            $hierarchy[$sid]['modules'][$mid] ??= [
+                'module_id' => $mid,
+                'module_name' => $row->module_name,
+                'sub_modules' => []
+            ];
+            $hierarchy[$sid]['modules'][$mid]['sub_modules'][] = [
                 'sub_module_id' => $row->sub_module_id,
                 'sub_module_name' => $row->sub_module_name,
-                'component_path' => $row->component_path
+                'component_path' => $row->component_path,
             ];
         }
 
-        // Convert nested associative array to indexed array
         $result = array_values(array_map(function ($system) {
             $system['modules'] = array_values($system['modules']);
             return $system;
@@ -66,4 +63,5 @@ class ModuleAccessController extends Controller
 
         return response()->json($result);
     }
+
 }

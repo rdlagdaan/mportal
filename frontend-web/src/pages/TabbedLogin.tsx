@@ -1,9 +1,15 @@
 // src/components/TabbedLogin.tsx
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { postWithCsrf } from "@/utils/axiosnapi";
-import { getWithCreds } from '@/utils/axiosnapi'; // add this import
-
+import { getWithCreds, postWithCsrf } from "@/utils/axiosnapi";
+import { useLocation } from 'react-router-dom'
+import { getMicro, postMicro } from '@/utils/axios-micro';
+import AppAccessAlert from "./components/ui/AppAccessAlert";
+import { classifyAuthError } from "@/utils/handleAuthError";
+import axiosMicro from "../utils/axios-micro";
+import napi from "../utils/axiosnapi";      // for LRWSIS + OPENU
+import axiosOpen from "../utils/axios-open";   // OPENU (/open/api/...)
+import { loginLrwsis } from "@/utils/axios-lrwsis";
 const tabs = [
   { name: "LrWSIS", color: "bg-yellow-400 text-white" },
   { name: "TUA Online University", color: "bg-green-600 text-white" },
@@ -21,6 +27,14 @@ type RegistrationData = {
   consent: boolean;
 };
 
+async function ensureLrwsisCsrf() {
+  // This hits /app/lrwsis/csrf-cookie so the XSRF-TOKEN is issued
+  // under the lrwsis bucket (Path=/app). Axios will then send it automatically.
+  await fetch('/app/lrwsis/csrf-cookie', { credentials: 'include' });
+}
+
+
+
 export default function TabbedLogin() {
   const [activeTab, setActiveTab] = useState(0);
   const [showReg, setShowReg] = useState(false);
@@ -34,57 +48,155 @@ export default function TabbedLogin() {
 
   const navigate = useNavigate();
 
-  const isMicro = activeTab === 2;
+  const { search } = useLocation()
+  const justLoggedOut = new URLSearchParams(search).get('loggedout') === '1'
 
- useEffect(() => {
-    (async () => {
-      try {
-        const r = await getWithCreds('/me');   // checks cookie session
-        if (r.data?.user) {
-          window.location.replace('/app/courses'); // already logged in
-        }
-      } catch {
-        /* not logged in — stay on /login */
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [accessDeniedApp, setAccessDeniedApp] = useState<string | null>(null);
+  const [genericError, setGenericError] = useState<string | null>(null);
+
+
+// inside TabbedLogin.tsx
+const isLrwsis = activeTab === 0
+const isOpenu  = activeTab === 1;
+const isMicro  = activeTab === 2
+
+
+
+
+
+useEffect(() => {
+  if (justLoggedOut) return;
+
+  (async () => {
+    try {
+      // ✅ MICRO ONLY
+      const m = await getMicro('/microcredentials/me') // -> /api/microcredentials/me
+      if (m?.data?.user) {
+        window.location.replace('/app/courses')
+        return
       }
-    })();
-  }, []);
 
-  
+      // ❌ remove this block to avoid foreign-session redirects
+      // const l = await getWithCreds('/lrwsis/me').catch(() => null)
+      // if (l?.data?.user) { window.location.replace('/lrwsis/dashboard'); return }
+
+    } catch {}
+  })()
+}, [justLoggedOut])
+
+
+
+
+
   const handleApplyNow = () => {
     if (isMicro) setShowReg(true);
   };
 
   // ✅ PUT THE HANDLER INSIDE THE COMPONENT (here)
-const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
-  if (!isMicro) return;
 
-  console.log('SUBMIT start', { loginEmail });   // ← debug log
-  setLoginError('');
-  setLoading(true);
+async function handleLoginSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setAccessDenied(false);
+  setAccessDeniedApp(null);
+  setGenericError(null);
 
   try {
-    const res = await postWithCsrf('/microcredentials/login', {
-      email: loginEmail,
-      password: loginPassword,
-      remember,
-    });
-    console.log('SUBMIT result', res.status, res.data);   // ← debug log
-
-    if (res.status === 200 && res.data?.ok) {
-      //const base = (import.meta.env.BASE_URL || '/app/').replace(/\/$/, '');
-      //window.location.assign(`${base}/dashboard`); // → /app/dashboard
-      window.location.replace('/app/dashboard');   // ← hard redirect, no router quirks
+    if (isMicro) {
+      await axiosMicro.post("/microcredentials/login", {
+        email: loginEmail,
+        password: loginPassword,
+        remember,
+      });
+      // success path for Micro:
+      navigate("/courses");
       return;
     }
 
-    setLoginError(res.data?.message || 'Login failed');
+    if (isLrwsis) {
+      setLoading(true);
+      setLoginError("");
+      try {
+        // 1) get CSRF for the lrwsis bucket
+        await ensureLrwsisCsrf();
+
+        // 2) login (napi baseURL is /app/api → /app/api/lrwsis/login)
+        const res = await napi.post("/lrwsis/login", {
+          email: loginEmail,
+          password: loginPassword,
+          remember,
+        });
+
+        // 3) (optional) persist user and redirect to DashboardSis
+        if (res?.data?.user) {
+          localStorage.setItem("user", JSON.stringify(res.data.user));
+        }
+        navigate("/lrwsis/dashboard", { replace: true });
+        return;
+      } catch (err: any) {
+        const status = err?.response?.status;
+        const code = err?.response?.data?.code;
+
+        if (status === 403 && code === "APP_ACCESS_DENIED") {
+          setAccessDenied(true);
+          setAccessDeniedApp("LRWSIS");
+          return;
+        }
+        if (status === 401) {
+          setLoginError("Invalid email or password.");
+          return;
+        }
+        setLoginError("Something went wrong. Please try again.");
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    if (isOpenu) {
+      // axiosOpen has baseURL "/open/api" → becomes /open/api/login ✔
+      await axiosOpen.post("/login", {
+        email: loginEmail,
+        password: loginPassword,
+        remember,
+      });
+      // TODO: navigate to OPENU landing
+      return;
+    }
   } catch (err: any) {
-    setLoginError(err?.response?.data?.message || 'Invalid credentials');
-  } finally {
-    setLoading(false);
+    const status = err?.response?.status;
+    const code = err?.response?.data?.code;
+
+    // Friendly banner on 403
+    if (status === 403 && code === "APP_ACCESS_DENIED") {
+      setAccessDenied(true);
+      if (isMicro) setAccessDeniedApp("Microcredentials");
+      else if (isLrwsis) setAccessDeniedApp("LRWSIS");
+      else if (isOpenu) setAccessDeniedApp("TUA Open University");
+      return;
+    }
+
+    // Your existing invalid credentials message
+    if (status === 401) {
+      if (typeof setLoginError === "function") {
+        setLoginError("Invalid email or password.");
+      } else {
+        setGenericError("Invalid email or password.");
+      }
+      return;
+    }
+
+    if (typeof setLoginError === "function") {
+      setLoginError("Something went wrong. Please try again.");
+    } else {
+      setGenericError("Something went wrong. Please try again.");
+    }
   }
-};
+}
+
+
+
+
 
 
   return (
@@ -187,20 +299,32 @@ const handleLoginSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
                 <div className="text-red-600 text-sm">{loginError}</div>
               )}
 
-              <button
-                type="submit"
-                disabled={!isMicro || loading}
-                title={
-                  isMicro
-                    ? ""
-                    : "Sign-in available on TUA Microcredentials tab only"
-                }
-                className={`w-full py-2.5 rounded-md font-semibold shadow-md transition-colors duration-200 ${tabs[activeTab].color} ${
-                  !isMicro || loading ? "opacity-60 cursor-not-allowed" : ""
-                }`}
-              >
-                {loading ? "Signing in..." : "Sign In"}
-              </button>
+              {accessDenied && (
+                <AppAccessAlert
+                  appName={accessDeniedApp ?? "this application"}
+                  className="mb-3"
+                />
+              )}
+
+              {genericError && (
+                <div
+                  role="alert"
+                  className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900"
+                >
+                  {genericError}
+                </div>
+              )}
+
+
+            <button
+              type="submit"
+              disabled={!(isMicro || isLrwsis || isOpenu) || loading}
+              title={isMicro || isLrwsis || isOpenu ? "" : "Sign-in available on these tabs"}
+              className={`w-full py-2.5 rounded-md font-semibold shadow-md transition-colors duration-200 ${tabs[activeTab]?.color ?? ""} ${!(isMicro||isLrwsis||isOpenu)||loading ? "opacity-60 cursor-not-allowed" : ""}`}
+            >
+              {loading ? "Signing in..." : "Sign In"}
+            </button>
+
 
               <button
                 type="button"

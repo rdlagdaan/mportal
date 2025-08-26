@@ -1,31 +1,27 @@
-import { ReactNode, useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
-import { getWithCreds } from "@/utils/axiosnapi";
-
-type Props = { children: ReactNode };
-
-export default function ProtectedRoute({ children }: Props) {
-  const [status, setStatus] = useState<"checking" | "ok" | "no">("checking");
+// src/pages/components/ProtectedRoute.tsx
+import { useEffect, useState } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
+import { getWithCreds } from '@/utils/axiosnapi'
+import { getMicro } from '@/utils/axios-micro';
+import type { JSX } from 'react';
+export default function ProtectedRoute({ children }: { children: JSX.Element }) {
+  const [ok, setOk] = useState<boolean | null>(null)
+  const loc = useLocation()
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      console.log("[PROTECT] checking /api/me …");
+    let cancelled = false
+    ;(async () => {
       try {
-        const res = await getWithCreds("/me");
-        console.log("[PROTECT] /api/me", res.status, res.data);
-        const user = res?.data?.user;
-        if (!cancelled) setStatus(user ? "ok" : "no");
-      } catch (err) {
-        console.log("[PROTECT] /api/me ERROR", err);
-        if (!cancelled) setStatus("no");
+        const r = await getMicro('/microcredentials/me') // -> /api/microcredentials/me
+        if (!cancelled) setOk(!!r.data?.user)
+      } catch {
+        if (!cancelled) setOk(false)
       }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    })()
+    return () => { cancelled = true }
+  }, [])
 
-  console.log("[PROTECT] render status =", status);
-  if (status === "checking") return null;
-  if (status === "ok") return <>{children}</>;
-  return <Navigate to="/login" replace />;
+  if (ok === null) return null
+  if (!ok) return <Navigate to="/app/login" replace state={{ from: loc.pathname }} />
+  return children
 }

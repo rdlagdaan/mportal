@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: mportal_postgres
+    restart: always
+    ports: ["5434:5432"]
+    volumes: [mportal_pgdata:/var/lib/postgresql/data]
+    environment:
+      POSTGRES_USER: mportal
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: mportal_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mportal -d mportal_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [app-network]
+
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev         # << use your dev Dockerfile
+    container_name: mportal_app
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html          # live code mount
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Dev app URLs / cookies
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8787
+      SESSION_DOMAIN: localhost
+      SESSION_SECURE_COOKIE: "false"
+      SANCTUM_STATEFUL_DOMAINS: ""
+      FRONTEND_URL: http://localhost:8787
+      # DB
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: mportal_db
+      DB_USERNAME: mportal
+      DB_PASSWORD: secret
+    ports: 
+      - "8787:8787"
+    command: >
+      sh -c "
+      mkdir -p storage/logs storage/framework/{cache,sessions,views} bootstrap/cache &&
+      chown -R www-data:www-data storage bootstrap/cache || true &&
+      chmod -R 775 storage bootstrap/cache || true &&
+      composer install &&
+      php artisan config:clear &&
+      php artisan migrate --force &&
+      php artisan octane:stop || true &&
+      fuser -k 8787/tcp || true &&
+      php artisan octane:start --server=swoole --host=0.0.0.0 --port=8787
+      "
+    networks: [app-network]
+
+  reverb:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev     # same image as app
+    container_name: mportal_reverb
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html      # share the code with app
+    depends_on:
+      app:
+        condition: service_started   # wait for app to be up
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8787
+      REVERB_SERVER_HOST: 0.0.0.0
+      REVERB_SERVER_PORT: 9090
+    ports:
+      - "9090:9090"                  # WS port exposed by this service
+    command: >
+      sh -c "
+      composer install &&
+      php artisan config:clear &&
+      php artisan reverb:start --host=0.0.0.0 --port=9090
+      "
+    networks: [app-network]
+
+
+volumes:
+  mportal_pgdata:
+
+networks:
+  app-network:
+    driver: bridge

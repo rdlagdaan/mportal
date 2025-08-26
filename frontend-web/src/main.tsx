@@ -1,11 +1,11 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
+// src/main.tsx
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import RootRouter from './root-router'
 import './index.css'
-import App from './App'
 
-document.documentElement.style.overflow = 'visible'; // ✅ force fix
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <RootRouter />
+  </React.StrictMode>
 )

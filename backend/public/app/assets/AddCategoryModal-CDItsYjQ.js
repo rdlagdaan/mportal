@@ -1,0 +1,1 @@
+import{u as a,a as s,b as r}from"./useLookups-_4BsPhKC.js";import"./index-DUek7_Ci.js";import"./handsontable-B9UYrM3w.js";import"./react-DJG_os-6.js";function O({companyId:t,selectedClassCode:o,onClose:i}){const{data:n}=a(t),{data:e}=s(t,o||void 0);return r(t,o??""),null}export{O as default};

@@ -62,4 +62,26 @@ class User extends Authenticatable
         $this->notify(new ResetPassword($token));
     }
 
+    public function appAccesses()
+    {
+        return $this->hasMany(\App\Models\UserAppAccess::class);
+    }
+
+    /**
+     * Check if the user has access to a specific sub-app by code.
+     * Valid codes: 'LRWSIS', 'OPENU', 'MICRO'
+     */
+    public function hasApp(string $code): bool
+    {
+        return $this->appAccesses()
+            ->whereHas('app', function ($q) use ($code) {
+                $q->where('code', strtoupper($code));
+            })
+            ->where('is_enabled', true)
+            ->exists();
+    }
+
+
+
+
 }

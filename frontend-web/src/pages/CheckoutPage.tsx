@@ -27,7 +27,7 @@ export default function CheckoutPage() {
     return (
       <div className="rounded-2xl border border-green-100 bg-white/80 p-4">
         <div className="text-green-900">Course not found.</div>
-        <Link to="/courses" className="mt-3 inline-flex rounded-xl bg-yellow-400 px-3 py-1.5 text-green-950">Back</Link>
+        <Link to="/app/courses" className="mt-3 inline-flex rounded-xl bg-yellow-400 px-3 py-1.5 text-green-950">Back</Link>
       </div>
     )
   }
@@ -36,7 +36,7 @@ export default function CheckoutPage() {
     // prototype: pretend payment succeeded → go to Enrolled list
     setBusy(true)
     await new Promise(r => setTimeout(r, 900))
-    navigate('/enrolled', { replace: true })
+    navigate('/app/enrolled', { replace: true })
   }
 
   return (
@@ -47,7 +47,7 @@ export default function CheckoutPage() {
           <p className="text-sm text-green-700/80">Choose a payment method to enroll</p>
         </div>
         <Link
-          to={`/courses/${id}`}
+          to={`/app/courses/${id}`}
           className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-1.5 text-sm font-medium text-green-900 ring-1 ring-green-200 hover:bg-green-50"
         >
           <ArrowLeftIcon className="h-5 w-5" /> Back to course

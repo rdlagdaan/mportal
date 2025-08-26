@@ -1,23 +1,30 @@
+# backend/Dockerfile.dev
 FROM php:8.3-cli
 
-# System dependencies
-RUN apt-get update && apt-get install -y \
-    git unzip curl libpq-dev libzip-dev libonig-dev libcurl4-openssl-dev \
-    libxml2-dev zlib1g-dev libssl-dev libpng-dev libjpeg-dev libfreetype6-dev \
-    procps  iproute2  psmisc  \   
-    && docker-php-ext-install \
-        pdo \
-        pdo_pgsql \
-        zip \
-        sockets \
-        pcntl 
-# Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Swoole
+# System deps + build tools for PECL/Swoole
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git unzip curl ca-certificates \
+    libpq-dev libzip-dev zlib1g-dev \
+    libssl-dev \
+    libpng-dev libjpeg-dev libfreetype6-dev \
+    libxml2-dev \
+    procps iproute2 psmisc \
+    build-essential pkg-config \
+  && docker-php-ext-configure gd --with-freetype --with-jpeg \
+  && docker-php-ext-install -j"$(nproc)" pdo pdo_pgsql zip sockets pcntl gd \
+  && rm -rf /var/lib/apt/lists/*
+
+# Install Composer (PHAR) without apt
+RUN curl -fsSL https://getcomposer.org/installer -o /tmp/composer-setup.php \
+  && php /tmp/composer-setup.php --install-dir=/usr/local/bin --filename=composer --2 \
+  && rm -f /tmp/composer-setup.php \
+  && composer --version
+
+# Swoole for Octane
 RUN pecl install swoole && docker-php-ext-enable swoole
 
-# Set working directory
 WORKDIR /var/www/html
 
 EXPOSE 8787
