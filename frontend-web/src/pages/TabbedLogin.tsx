@@ -12,7 +12,7 @@ import axiosOpen from "../utils/axios-open";   // OPENU (/open/api/...)
 import { loginLrwsis } from "@/utils/axios-lrwsis";
 const tabs = [
   { name: "LrWSIS", color: "bg-yellow-400 text-white" },
-  { name: "TUA Online University", color: "bg-green-600 text-white" },
+  { name: "TUA OPEN University", color: "bg-green-600 text-white" },
   { name: "TUA Microcredentials", color: "bg-yellow-200 text-green-700" },
 ];
 
