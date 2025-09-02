@@ -55,6 +55,10 @@ use Illuminate\Support\Facades\Broadcast;
 use App\Http\Controllers\Assets\LookupController;
 use App\Http\Controllers\AuditLogController;
 
+
+use App\Http\Controllers\mdo\TriageController;
+use App\Http\Controllers\mdo\QueueController;
+use App\Http\Controllers\mdo\PingController;
 /*
 |--------------------------------------------------------------------------
 | Health / Ping
@@ -460,16 +464,31 @@ Route::prefix('app')
 
     Route::delete('/service-logs/{logId}',   [AssetServiceLogController::class, 'destroy'])
         ->middleware('permission:fa.maintenance.update');
-
-
-
-
-
-
-
-
   });
 
+
+/*
+|--------------------------------------------------------------------------
+| MEDICAL AND DENTAL /api/mdo
+|--------------------------------------------------------------------------
+*/
+
+
+// ...existing group...
+Route::prefix('api/mdo')->middleware(['web','auth:sanctum'])->group(function () {
+
+    // Triage core you already have
+    Route::post('/triage/encounters', [TriageController::class, 'openEncounter']);
+    Route::post('/triage/vitals',     [TriageController::class, 'addVitals']);
+    Route::post('/triage/queue',      [TriageController::class, 'sendToQueue']);
+    Route::get ('/triage/encounters/{id}', [TriageController::class, 'summary']);
+
+    // NEW: paged list for triage encounters (+ search)
+    Route::get('/triage/encounters',  [TriageController::class, 'list']);
+
+    // OPTIONAL: persons search for combobox (if you want names not raw IDs)
+    Route::get('/triage/persons',     [TriageController::class, 'searchPersons']);
+});
 
 
 

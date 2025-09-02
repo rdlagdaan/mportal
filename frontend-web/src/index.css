@@ -180,3 +180,17 @@ button:focus-visible {
   border-right: 1px solid #ffffff55;
 }
 
+/* Hide number spinners cross-browser */
+input[type="number"] {
+  appearance: textfield;         /* ✅ Standard property */
+  -moz-appearance: textfield;    /* Firefox */
+  -webkit-appearance: none;      /* Chrome, Safari, Edge */
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  appearance: none;              /* ✅ Standard property */
+  -webkit-appearance: none;      /* Chrome, Safari, Edge */
+  margin: 0;
+}
+

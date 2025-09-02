@@ -1,0 +1,1 @@
+import{j as o}from"./index-IvFHYyOu.js";import"./handsontable-DB04mlRq.js";import"./react-DJG_os-6.js";function i(){return o.jsx("div",{className:"p-4",children:"Consultations (coming soon)"})}export{i as default};

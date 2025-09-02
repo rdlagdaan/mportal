@@ -1,0 +1,1 @@
+import{b as r}from"./useLookups-DkT6R57-.js";import"./index-B5i0NCjd.js";import"./handsontable-DB04mlRq.js";import"./react-DJG_os-6.js";function i({companyId:o,onClose:t}){return r(o),null}export{i as default};
