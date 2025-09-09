@@ -1,0 +1,1 @@
+import{j as i}from"./index-D7RazDoW.js";import"./handsontable-DB04mlRq.js";import"./react-DJG_os-6.js";function o(){return i.jsx("div",{className:"p-4",children:"Medical Certificates (coming soon)"})}export{o as default};

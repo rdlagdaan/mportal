@@ -3,6 +3,8 @@ import napi from '@/utils/axiosnapi';
 import { getCsrfTokenFor } from '@/utils/csrf';
 import Cookies from 'js-cookie';
 import { PencilSquareIcon, TrashIcon, PlusCircleIcon, XMarkIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import ComponentAddress, { AddressIds } from "@/components/libraries/ComponentAddress";
+
 
 const COLS = 9; // update this if you add/remove columns
 // --- helpers (put near other small utils) ---
@@ -304,7 +306,7 @@ export default function EmployeesProfile() {
   const [photoPreview, setPhotoPreview] = useState<string | null>(personal.photo_url ?? null);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
-
+const [addr, setAddr] = useState<AddressIds>({});
   /* --------------- Init --------------- */
   useEffect(() => {
     const init = async () => {
@@ -941,6 +943,12 @@ async function savePersonal() {
 
               {activeTab==='contact' && (
                 <>
+
+                      <div className="col-span-10">
+      <ComponentAddress value={addr} onChange={(ids) => setAddr(ids)} required />
+      <pre className="text-xs bg-gray-50 p-3 rounded-xl">{JSON.stringify(addr, null, 2)}</pre>
+    </div>
+
                   <div className="col-span-6">
                     <label className="block text-sm mb-1">Mobile Number</label>
                     <input className="w-full border rounded px-3 py-2" value={contact.mobile_number||''} onChange={e=>setContact(c=>({...c,mobile_number:e.target.value}))}/>
@@ -962,6 +970,9 @@ async function savePersonal() {
                   <div className="col-span-12 font-semibold text-gray-800">CITY ADDRESS</div>
                   <div className="col-span-6"><label className="block text-sm mb-1">Street / Address</label>
                     <input className="w-full border rounded px-3 py-2" value={contact.city_address_line||''} onChange={e=>setContact(c=>({...c,city_address_line:e.target.value}))}/></div>
+                  
+
+                  
                   <div className="col-span-3"><label className="block text-sm mb-1">Barangay</label>
                     <input className="w-full border rounded px-3 py-2" value={contact.city_barangay||''} onChange={e=>setContact(c=>({...c,city_barangay:e.target.value}))}/></div>
                   <div className="col-span-3"><label className="block text-sm mb-1">Town</label>

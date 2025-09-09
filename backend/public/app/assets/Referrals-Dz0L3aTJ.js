@@ -1,0 +1,1 @@
+import{j as r}from"./index-pK80WN6c.js";import"./handsontable-DB04mlRq.js";import"./react-DJG_os-6.js";function t(){return r.jsx("div",{className:"p-4",children:"Referrals (coming soon)"})}export{t as default};

@@ -59,6 +59,10 @@ use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\mdo\TriageController;
 use App\Http\Controllers\mdo\QueueController;
 use App\Http\Controllers\mdo\PingController;
+
+use App\Http\Controllers\Libraries\AddressController;
+
+
 /*
 |--------------------------------------------------------------------------
 | Health / Ping
@@ -491,6 +495,16 @@ Route::prefix('api/mdo')->middleware(['web','auth:sanctum'])->group(function () 
 });
 
 
+
+
+Route::prefix('app/api')->middleware(['web'])->group(function () {
+    Route::get('/regions',         [AddressController::class, 'regions']);
+    Route::get('/provinces',       [AddressController::class, 'provinces']);       // ?region_id=
+    Route::get('/cities',          [AddressController::class, 'cities']);          // ?province_id=
+    Route::get('/barangays',       [AddressController::class, 'barangays']);       // ?cmid=
+    Route::get('/zipcodes',        [AddressController::class, 'zipcodes']);        // ?province_id=&cmid=&barangay_id=
+    Route::get('/address/resolve', [AddressController::class, 'resolve']);         // ?zipcode_id=
+});
 
 
 

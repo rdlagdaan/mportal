@@ -1,0 +1,1 @@
+import{b as r}from"./index-DrXyGv85.js";async function s(o){const a={lrwsis:"/app/lrwsis/csrf-cookie",micro:"/app/sanctum/csrf-cookie",open:"/open/api/sanctum/csrf-cookie"};await r.get(a[o],{withCredentials:!0})}async function i(){return location.pathname.startsWith("/app")?s("lrwsis"):s("micro")}export{s as a,i as g};
