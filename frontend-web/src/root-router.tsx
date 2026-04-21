@@ -1,5 +1,6 @@
 // src/root-router.tsx
 import '@/utils/echo' 
+import ReverbProbe from '@/components/ReverbProbe'  // 👈 add this
 
 import * as React from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'

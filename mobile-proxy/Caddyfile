@@ -1,0 +1,30 @@
+{
+  servers {
+    protocols h1 h2
+  }
+}
+
+mportal.178.128.111.118.sslip.io {
+
+  encode zstd gzip
+  root * /var/www/html/public
+
+  # --------------------------------------
+  # MOBILE API → Mobile Backend (8000)
+  # --------------------------------------
+  handle_path /api/* {
+    reverse_proxy mportal-backend-mobile:8000
+  }
+
+  # --------------------------------------
+  # MOBILE WebSockets → Mobile Backend (8082)
+  # --------------------------------------
+  handle_path /reverb/* {
+    reverse_proxy mportal-backend-mobile:8082
+  }
+
+  # --------------------------------------
+  # FOR ALL OTHER PATHS → Main App (Octane)
+  # --------------------------------------
+  reverse_proxy app:8080
+}

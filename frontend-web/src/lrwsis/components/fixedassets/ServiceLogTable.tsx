@@ -23,7 +23,7 @@ export default function ServiceLogTable({ assetId }:{ assetId:number }) {
   async function load(p=page) {
     setBusy(true);
     try {
-      const r = await napi.get<Paged<Row>>(`/app/api/assets/${assetId}/service-logs`, { params: { per, page:p }});
+      const r = await napi.get<Paged<Row>>(`/assets/${assetId}/service-logs`, { params: { per, page:p }});
       setRows(r.data.data); setPage(r.data.current_page); setPages(r.data.last_page);
     } finally { setBusy(false); }
   }
@@ -31,16 +31,16 @@ export default function ServiceLogTable({ assetId }:{ assetId:number }) {
 
   async function add() {
     const today = new Date().toISOString().slice(0,10);
-    await napi.post(`/app/api/assets/${assetId}/service-logs`, { service_date: today, description:'', parts_cost:0, labor_cost:0 });
+    await napi.post(`/assets/${assetId}/service-logs`, { service_date: today, description:'', parts_cost:0, labor_cost:0 });
     await load(1);
   }
   async function upd(r:Row, patch: Partial<Row>) {
-    await napi.patch(`/app/api/service-logs/${r.id}`, patch);
+    await napi.patch(`/service-logs/${r.id}`, patch);
     await load(page);
   }
   async function del(r:Row) {
     if (!confirm('Delete this service log?')) return;
-    await napi.delete(`/app/api/service-logs/${r.id}`);
+    await napi.delete(`/service-logs/${r.id}`);
     const nextP = rows.length===1 && page>1 ? page-1 : page; await load(nextP);
   }
 

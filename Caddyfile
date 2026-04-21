@@ -1,0 +1,107 @@
+# [1] Global options
+{
+  servers {
+    protocols h1 h2
+  }
+}
+
+# [2] Site
+mportal.178.128.111.118.sslip.io {
+  # [2.1] Public web root + encoders
+  root * /var/www/html/public
+  encode zstd gzip
+
+  #
+  # =============================
+  #   MOBILE API — MATCH FIRST
+  # =============================
+  #
+ route /api/* {
+    handle /api/* {
+        reverse_proxy mportal-backend-mobile:8000
+    }
+    abort
+}
+
+  @ws path /reverb/*
+  handle @ws {
+    reverse_proxy mportal-backend-mobile:8082
+  }
+
+  @mobile_storage path /storage/images/*
+handle @mobile_storage {
+    reverse_proxy mportal-backend-mobile:8000
+}
+
+# =============================
+# PUBLIC STORAGE FILES
+# =============================
+handle /storage/* {
+    header Cache-Control "public, max-age=604800"
+    root * /var/www/html/public
+    file_server
+}
+
+  #
+  # =============================
+  #   WEB APP ROUTING SECTION
+  # =============================
+  #
+
+
+
+  # [3] Stable entrypoint: /app/assets/index.js
+  @entry_js path /app/assets/index.js
+  handle @entry_js {
+    header Cache-Control "no-store"
+    rewrite * /assets/index.js
+    file_server
+  }
+
+  # [4] Stable entrypoint: /app/assets/index.css
+  @entry_css path /app/assets/index.css
+  handle @entry_css {
+    header Cache-Control "no-store"
+    rewrite * /assets/index.css
+    file_server
+  }
+
+  # [5] Back-compat for old hashed entrypoints
+  @entry_js_hashed  path_regexp ihjs  ^/app/assets/index-[^/]+\.js$
+  handle @entry_js_hashed {
+    header Cache-Control "no-store"
+    rewrite * /assets/index.js
+    file_server
+  }
+
+  @entry_css_hashed path_regexp ihcss ^/app/assets/index-[^/]+\.css$
+  handle @entry_css_hashed {
+    header Cache-Control "no-store"
+    rewrite * /assets/index.css
+    file_server
+  }
+
+  # [6] NEW: Dynamic QR routes → Laravel (must be BEFORE [7])
+  @qr_asset path_regexp qrasset ^/app/assets/\d+/qr\.svg$
+  # (Optional) if you ever use custody QRs like /app/assets/123/custody/1/qr.svg, also add:
+  # @qr_cust  path_regexp qrcust  ^/app/assets/\d+/custody/\d+/qr\.svg$
+
+  handle @qr_asset {
+    header Cache-Control "no-store"
+    reverse_proxy app:8080
+  }
+  # handle @qr_cust {
+  #   header Cache-Control "no-store"
+  #   reverse_proxy app:8080
+  # }
+
+  # [7] All other (hashed) assets → static files
+  handle_path /app/assets/* {
+    header Cache-Control "public, max-age=31536000, immutable"
+    rewrite * /assets{path}
+    file_server
+  }
+
+  # [8] Everything else → Laravel Octane
+  reverse_proxy app:8080
+}

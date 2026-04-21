@@ -21,8 +21,8 @@ const baseURL = resolveBaseURL();
 /** Sanctum CSRF cookie endpoint (site root, not under /api). */
 const CSRF_URL =
   typeof window !== "undefined"
-    ? new URL("/sanctum/csrf-cookie", window.location.origin).toString()
-    : "/sanctum/csrf-cookie";
+    ? new URL("/app/lrwsis/csrf-cookie", window.location.origin).toString()
+    : "/app/lrwsis/csrf-cookie";
 
 
 // ---------- Axios instance ----------

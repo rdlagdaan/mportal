@@ -14,7 +14,7 @@ export default function LrwsisLayout() {
   return (
     <div className="min-h-screen">
       <header className="px-4 py-3 bg-gradient-to-r from-yellow-400 to-green-600 text-white font-semibold">
-        LRWSIS
+        SIS
       </header>
       <main className="p-4">
         <Outlet />

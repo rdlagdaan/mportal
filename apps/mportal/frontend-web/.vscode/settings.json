@@ -1,0 +1,8 @@
+{
+  "files.associations": {
+    "**/apps/mportal/frontend-web/src/**/*.css": "tailwindcss"
+  },
+  "css.lint.unknownAtRules": "ignore",
+  "css.validate": false,
+  "tailwindCSS.emmetCompletions": true
+}

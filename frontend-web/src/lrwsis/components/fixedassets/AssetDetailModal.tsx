@@ -154,7 +154,7 @@ useEffect(() => {
       if (!id) return;
       setBusy(true);
       try {
-        const r = await napi.get(`/app/api/assets/${id}`);
+        const r = await napi.get(`/assets/${id}`);
         const a = r.data || {};
         setForm((prev) => ({
           ...prev,
@@ -196,19 +196,37 @@ useEffect(() => {
   async function save(closeAfter = true) {
     setSaving(true);
     try {
-      const payload = { ...form } as any;
-      ['date_received', 'purchase_date', 'in_service_date', 'warranty_expires', 'last_audited'].forEach((k) => {
-        if (payload[k] === '') payload[k] = null;
-      });
+// Map UI → API (backend expects these names)
+const payload = {
+  description: form.description,
+  asset_type: form.asset_type,              // 'depreciable' | 'non_depreciable'
+  class_code: form.class_code || null,
+  category_code: form.category_code || null,
+  type_code: form.type_code || null,
+  quantity: Number(form.quantity || 1),
+
+  loan_agreement: form.loan_agreement || 'Default', // backend converts to boolean
+  include_in_audits: !!form.include_in_audits,
+  last_audited: form.last_audited || null,
+
+  // optional: you already have this field; backend will store if present
+  depr_method: form.depr_method || null,
+
+  // (optional) workstation id; or send as header X-Workstation instead
+  // workstation_id: 'LRWSIS-PC',
+};
+
 
       if (isEdit) {
-        await napi.patch(`/app/api/assets/${id}`, payload, {
+        await napi.patch(`/assets/${id}`, payload, {
           headers: { 'X-XSRF-TOKEN': Cookies.get('XSRF-TOKEN') || '' }, withCredentials: true,
         });
       } else {
-        await napi.post(`/app/api/assets`, payload, {
-          headers: { 'X-XSRF-TOKEN': Cookies.get('XSRF-TOKEN') || '' }, withCredentials: true,
-        });
+const { data } = await napi.post(`/assets`, payload, {
+  headers: { 'X-XSRF-TOKEN': Cookies.get('XSRF-TOKEN') || '' }, withCredentials: true,
+});
+// reflect server values (so header can show real number before close)
+setForm(f => ({ ...f, id: data.id, asset_no: data.asset_number }));
       }
       if (closeAfter) onClose(true);
     } catch (e:any) {
@@ -236,7 +254,7 @@ useEffect(() => {
     if (!isEdit) return;
     setSchedBusy(true);
     try {
-      const r = await napi.post(`/app/api/assets/${id}/depreciation/preview`, {});
+      const r = await napi.post(`/assets/${id}/depreciation/preview`, {});
       setSched((r.data?.rows || []) as SchedRow[]);
     } catch { setSched([]); }
     finally { setSchedBusy(false); }
@@ -270,7 +288,7 @@ useEffect(() => {
             </div>
             <div className="text-center">
               <div className="text-xs text-gray-500">{isEdit ? 'Asset Number' : 'New Asset'}</div>
-              <div className="font-semibold text-lg text-green-800">{isEdit ? (form.asset_no || '') : 'tmp(temporary)'}</div>
+              <div className="font-semibold text-lg text-green-800">{form.asset_no || 'tmp(temporary)'}</div>
             </div>
             <button onClick={()=>onClose(false)} className="p-1 rounded hover:bg-green-100"><XMarkIcon className="h-7 w-7 text-gray-600"/></button>
           </div>
@@ -393,14 +411,20 @@ useEffect(() => {
                       <input className={inputClass} value={form.asset_no || 'tmp(temporary)'} disabled />
                     </InputBase>
 
-                    {isEdit && (
-                      <InputBase col="col-span-12">
-                        <Label>QR Code</Label>
-                        <div className="border rounded-lg p-3 flex items-center justify-center bg-white">
-                          <img src={`/app/api/assets/${id}/qr.svg`} alt="Asset QR" className="max-h-40" onError={(e)=>((e.currentTarget.style.display='none'))}/>
-                        </div>
-                      </InputBase>
-                    )}
+{(isEdit || form.id) && (
+  <InputBase col="col-span-12">
+    <Label>QR Code</Label>
+    <div className="border rounded-lg p-3 flex items-center justify-center bg-white">
+      <img
+        src={`/app/assets/${(form.id ?? id) as number}/qr.svg`}
+        alt="Asset QR"
+        className="max-h-40"
+        onError={(e)=>((e.currentTarget.style.display='none'))}
+      />
+    </div>
+  </InputBase>
+)}
+
 
                     <InputBase col="col-span-12">
                       <div className="rounded-xl border-2 border-green-200 p-4">
@@ -510,7 +534,7 @@ useEffect(() => {
   <Label>Supplier</Label>
   <SearchableCombo
     placeholder="Search supplier…"
-    fetchUrl="/app/api/lookups/vendors"
+    fetchUrl="/app/lookups/vendors"
     selectedLabel={supplierLabel}
     onChange={(v) => {
       const idNum = v?.id === undefined || v?.id === null ? null : Number(v.id);
@@ -661,7 +685,7 @@ function HistoryPanel({ table, id }:{ table:string; id:number }) {
 
   useEffect(()=>{ if (!id) return; (async()=>{
     setLoading(true);
-    try { const r = await napi.get('/app/api/audit-logs', { params:{ table, id } }); setRows(r.data||[]); }
+    try { const r = await napi.get('/audit-logs', { params:{ table, id } }); setRows(r.data||[]); }
     finally { setLoading(false); }
   })(); }, [table, id]);
 
@@ -708,7 +732,7 @@ function PicturePanel({
     setBusy(true);
     try {
       const fd = new FormData(); fd.append('file', file);
-      const r = await napi.post(`/app/api/assets/${id}/picture`, fd, { headers: { 'Content-Type':'multipart/form-data' }});
+      const r = await napi.post(`/assets/${id}/picture`, fd, { headers: { 'Content-Type':'multipart/form-data' }});
       onUploaded(r.data.picture_path);
     } finally { setBusy(false); setFile(null); }
   }

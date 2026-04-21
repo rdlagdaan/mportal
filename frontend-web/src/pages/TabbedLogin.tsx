@@ -12,8 +12,8 @@ import axiosOpen from "../utils/axios-open";   // OPENU (/open/api/...)
 import { loginLrwsis } from "@/utils/axios-lrwsis";
 const tabs = [
   { name: "LrWSIS", color: "bg-yellow-400 text-white" },
-  { name: "TUA Online University", color: "bg-green-600 text-white" },
-  { name: "TUA Microcredentials", color: "bg-yellow-200 text-green-700" },
+  { name: "Online University", color: "bg-green-600 text-white" },
+  { name: "Microcredentials", color: "bg-yellow-200 text-green-700" },
 ];
 
 type RegistrationData = {
@@ -172,7 +172,7 @@ async function handleLoginSubmit(e: React.FormEvent) {
       setAccessDenied(true);
       if (isMicro) setAccessDeniedApp("Microcredentials");
       else if (isLrwsis) setAccessDeniedApp("LRWSIS");
-      else if (isOpenu) setAccessDeniedApp("TUA Open University");
+      else if (isOpenu) setAccessDeniedApp("Open University");
       return;
     }
 
@@ -212,11 +212,11 @@ async function handleLoginSubmit(e: React.FormEvent) {
         {/* Logo + Title */}
         <div className="flex items-center justify-center gap-4 bg-gradient-to-r from-green-600 to-yellow-400 p-6 rounded-t-lg">
           <h1 className="text-white text-4xl font-extrabold drop-shadow-lg text-center">
-            Trinity University of Asia
+            School Information System
           </h1>
           <img
-            src="/android-icon-144x144.png"
-            alt="Trinity Logo"
+            src="/android-icon-144x144.pnga"
+            alt="SIS Logo"
             className="h-16 w-16 object-contain drop-shadow-lg"
           />
         </div>
@@ -397,6 +397,7 @@ async function handleLoginSubmit(e: React.FormEvent) {
           }}
         />
       )}
+      <div data-build="2025-10-03-1" />
     </div>
   );
 }

@@ -1,0 +1,13 @@
+{
+  servers {
+    protocols h1 h2   # disable HTTP/3/QUIC globally
+  }
+}
+
+mportal.178.128.111.118.sslip.io {
+  reverse_proxy app:8080 {
+    transport http {
+      versions h1     # upstream stays HTTP/1.1 (good)
+    }
+  }
+}

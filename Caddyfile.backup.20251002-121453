@@ -1,0 +1,204 @@
+mportal.178.128.111.118.sslip.io {
+	# 1) Global: disable WS compression for non-WS traffic
+	@no_ws not header Upgrade *websocket*
+	encode @no_ws gzip zstd
+
+	# 2) Reverb WebSocket
+	@reverb_ws {
+		path /app/*
+		header Connection *Upgrade*
+		header Upgrade websocket
+	}
+
+	reverse_proxy @reverb_ws reverb:8082 {
+		transport http {
+			versions h1
+			keepalive 30s
+		}
+		# standard proxy headers
+
+		# Strip headers that break Chrome/Opera handshakes
+		header_up -Cookie
+		header_up -Sec-WebSocket-Extensions
+		header_up -Sec-WebSocket-Protocol
+	}
+
+	# 3) Private channel auth → Laravel (session/Sanctum)
+	handle /broadcasting/* {
+		reverse_proxy app:8080 {
+			# Caddy uses HTTP/1.1 to upstream by default; keeping this explicit is fine.
+			transport http {
+				versions h1
+			}
+
+			# Forward standard proxy headers
+		}
+	}
+
+	# 4) API exceptions that keep /app prefix as-is
+
+	# 4a) LRWSIS API exception — keep /app
+	@app_lrwsis_api {
+		path /app/api/lrwsis/*
+	}
+	handle @app_lrwsis_api {
+		reverse_proxy app:8080
+	}
+
+	# 4b) USER API exception — keep /app  ✅ (NEW)
+	@app_user_api {
+		path /app/api/user/*
+	}
+	handle @app_user_api {
+		reverse_proxy app:8080
+	}
+
+	# 4c) Notifications exception — keep /app  ✅ (NEW)
+	@app_notifications_api {
+		path /app/api/notifications /app/api/notifications/*
+	}
+	handle @app_notifications_api {
+		reverse_proxy app:8080
+	}
+
+	# 4d) MICRO API exception — keep /app  ✅ (NEW)
+	@app_micro_api {
+		path /app/api/microcredentials/*
+	}
+	handle @app_micro_api {
+		reverse_proxy app:8080
+	}
+
+# 4e) SETTINGS API exception — keep /app
+@app_settings_api {
+    path /app/api/settings /app/api/settings/*
+}
+handle @app_settings_api {
+    reverse_proxy app:8080
+}
+
+# 4f) ASSETS API exception — keep /app
+@app_assets_api {
+    path /app/api/assets /app/api/assets/*
+}
+handle @app_assets_api {
+    reverse_proxy app:8080
+}
+
+
+
+	# 5) Sanctum / CSRF
+
+	# 5a) Sanctum under /app → strip /app (working CSRF fix)
+	@app_sanctum {
+		path /app/sanctum/*
+	}
+	handle @app_sanctum {
+		uri strip_prefix /app
+		reverse_proxy app:8080
+	}
+
+	# 5b) Root Sanctum (already good)
+	handle /sanctum/* {
+		reverse_proxy app:8080
+	}
+
+# 5c) LRWSIS CSRF cookie — keep /app (force h1 + small retry)
+handle /app/lrwsis/csrf-cookie {
+    reverse_proxy app:8080 {
+        transport http {
+            versions h1
+            read_buffer  64kb
+            write_buffer 64kb
+        }
+        health_uri   /health
+        fail_duration 5s
+        try_duration  5s
+    }
+}
+
+
+	# 6) Other /app-prefixed API families → strip /app then proxy
+	@app_api {
+		path /app/api/*
+	}
+	handle @app_api {
+		uri strip_prefix /app
+		reverse_proxy app:8080
+	}
+
+	@app_open_api {
+		path /app/open/api/*
+	}
+	handle @app_open_api {
+		uri strip_prefix /app
+		reverse_proxy app:8080
+	}
+
+	@app_broadcasting {
+		path /app/broadcasting/*
+	}
+	handle @app_broadcasting {
+		uri strip_prefix /app
+		reverse_proxy app:8080
+	}
+
+	# 7) Root API families → Octane
+	handle /api/* {
+		reverse_proxy app:8080 {
+			transport http {
+				versions h1
+			}
+
+		}
+	}
+	handle /open/api/* {
+		reverse_proxy app:8080
+	}
+
+	handle /*.php {
+		reverse_proxy app:8080
+	}
+
+	# 8) Static assets under /app
+	handle /app/assets/* {
+		root * /srv/site/backend/public/app
+		uri strip_prefix /app
+		file_server
+	}
+
+	# 9) SPA fallback for /app (GET only; don’t swallow API/WS/Sanctum)
+	@spa_get {
+		method GET
+		path /app/*
+		not header Connection *Upgrade*
+		not path /app/assets/*
+		not path /app/sanctum/*
+		not path /app/api/*
+		not path /app/open/api/*
+		not path /app/broadcasting/*
+	}
+	handle @spa_get {
+		root * /srv/site/backend/public/app
+		uri strip_prefix /app
+		rewrite * /index.html
+		file_server
+	}
+
+	# 10) Top-level static files at root (serve from SPA dir, not the SPA fallback)
+	@root_static_assets {
+		method GET
+		path_regexp rootstatic ^/[^/]+\.(?:png|jpg|jpeg|svg|gif|ico|webp|avif|css|js|map|txt|json)$
+	}
+	handle @root_static_assets {
+		root * /srv/site/backend/public/app
+		file_server
+	}
+
+	# 11) Serve SPA at root
+	handle / {
+		root * /srv/site/backend/public/app
+		rewrite * /index.html
+		file_server
+	}
+}

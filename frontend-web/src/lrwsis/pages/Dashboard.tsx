@@ -37,9 +37,9 @@ export default function LrwsisDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [username, setUsername] = useState<string>('')
 
-  const [me, setMe] = React.useState<{ name?: string; employee_id?: number } | null>(null)
-  
-   React.useEffect(() => {
+  const [me, setMe] = React.useState<{ id?: number; name?: string; employee_id?: number } | null>(null)
+
+  /*React.useEffect(() => {
     // You already call /lrwsis/me in the layout; this is just to fetch name/employeeId for the header
     napi.get('/lrwsis/me')
       .then(r => setMe({
@@ -47,8 +47,14 @@ export default function LrwsisDashboard() {
         employee_id: r.data?.user?.employee_id ?? (window as any).currentEmployeeId
       }))
       .catch(()=>{})
-  }, []) 
+  }, [])*/ 
   
+  React.useEffect(() => {
+    napi.get('/lrwsis/me').then(r => {
+      const user = r.data?.user ?? {}
+      setMe({ id: user.id, name: user.name, employee_id: user.employee_id })
+    }).catch(()=>{})
+  }, [])
   
   // ---- Auth guard + user ----
   useEffect(() => {
@@ -151,8 +157,8 @@ export default function LrwsisDashboard() {
       <aside className={`transition-all duration-300 border-r shadow-md h-full flex flex-col ${sidebarOpen ? 'w-72' : 'w-0'}`}>
         <div className="p-4 border-b bg-gradient-to-r from-green-700 to-yellow-400 text-white flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/android-icon-144x144.png" alt="TUA" className="h-8 w-8 rounded" />
-            <span className="font-extrabold tracking-wide">LRWSIS</span>
+            <img src="/android-icon-144x1441.png" alt="TUA" className="h-8 w-8 rounded" />
+            <span className="font-extrabold tracking-wide">SIS</span>
           </div>
           <button
             type="button"
@@ -267,12 +273,14 @@ export default function LrwsisDashboard() {
   <span className="text-sm">Welcome, {username}</span>
 
   {/* 🔔 Notification bell stays independent */}
-  <NotificationsBell employeeId={Number(me?.employee_id ?? 0)} />
-
+<NotificationsBell
+  userId={Number(me?.id ?? 0)}
+  employeeId={Number(me?.employee_id ?? 0)}
+/>
   {/* 👤 Avatar + dropdown wrapper */}
   <div className="relative group">
     <img
-      src="/app/tua-logo.png"
+      src="/tua-logo1.png"
       alt="User"
       className="w-8 h-8 rounded-full border-2 border-white object-cover cursor-pointer"
     />

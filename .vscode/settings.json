@@ -1,0 +1,11 @@
+{
+  // ⬅️ IMPORTANT: do NOT remap *.css to "tailwindcss"
+  "files.associations": {},
+
+  // Disable the built-in CSS diagnostics that show "unknownAtRules"
+  "css.lint.unknownAtRules": "ignore",
+  "css.validate": false,
+
+  // Keep Tailwind IntelliSense working (it auto-detects tailwind.config.*)
+  "tailwindCSS.root": ["apps/mportal/frontend-web"]
+}

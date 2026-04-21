@@ -1,0 +1,4 @@
+services:
+  app:
+    environment:
+      APP_KEY: "base64:V1c3D1fRwd/zF8Gw/ATHo/QePhTOirZurYek7ZWKghY="

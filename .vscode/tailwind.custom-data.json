@@ -1,0 +1,13 @@
+{
+  "version": 1.1,
+  "atDirectives": [
+    { "name": "@tailwind" },
+    { "name": "@apply" },
+    { "name": "@layer" },
+    { "name": "@config" },
+    { "name": "@variants" },
+    { "name": "@responsive" },
+    { "name": "@screen" },
+    { "name": "@theme" }
+  ]
+}
