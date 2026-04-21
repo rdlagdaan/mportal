@@ -16,7 +16,8 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+   // 'default' => env('DB_CONNECTION', 'sqlite'),
+   'default' => env('DB_CONNECTION', 'pgsql'),
 
     /*
     |--------------------------------------------------------------------------
@@ -96,10 +97,30 @@ return [
 
             // 👇 use your env to include both schemas; string or array is fine
             // e.g. "assets,public" → assets is searched first, then public
-            'search_path'    => env('DB_SCHEMA', 'public'),
-
+            'search_path'    => env('DB_SCHEMA', 'public', 'mobile'),
+            'schema' => 'public,mobile',
             'sslmode'        => 'prefer',
         ],
+
+//         'pgsql' => [
+//     'driver'         => 'pgsql',
+//     'url'            => env('DB_URL'),
+//     'host'           => env('DB_HOST', '127.0.0.1'),
+//     'port'           => env('DB_PORT', '5432'),
+//     'database'       => env('DB_DATABASE', 'postgres'),
+//     'username'       => env('DB_USERNAME', 'postgres'),
+//     'password'       => env('DB_PASSWORD', ''),
+//     'charset'        => 'utf8',
+//     'prefix'         => '',
+//     'prefix_indexes' => true,
+
+//     // ✔ correct
+//     'search_path'    => 'public,mobile',
+//     'schema'         => 'public,mobile',
+
+//     'sslmode'        => 'prefer',
+// ],
+
 
 
         'sqlsrv' => [

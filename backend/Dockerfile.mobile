@@ -1,0 +1,66 @@
+# -------------------------------
+#  PHP 8.3 + Laravel Mobile Backend
+# -------------------------------
+FROM php:8.3-fpm
+
+# -------------------------------
+#  Install System Dependencies
+# -------------------------------
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    libpng-dev libjpeg-dev libonig-dev libxml2-dev libzip-dev libpq-dev \
+    zip unzip curl git \
+    nodejs npm \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd zip \
+    && docker-php-ext-install pdo_pgsql \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# -------------------------------
+#  Set Working Directory
+# -------------------------------
+WORKDIR /var/www
+
+# -------------------------------
+#  Install Composer
+# -------------------------------
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# -------------------------------
+#  Copy App Source
+# -------------------------------
+COPY . /var/www
+
+# -------------------------------
+#  Use .env.mobile as main env
+# -------------------------------
+RUN cp .env.mobile .env
+
+# -------------------------------
+#  Permissions
+# -------------------------------
+RUN chmod -R 775 storage bootstrap/cache
+
+# -------------------------------
+#  Install PHP Dependencies
+# -------------------------------
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader
+
+# Clear Laravel caches
+RUN php artisan config:clear \
+    && php artisan cache:clear \
+    && php artisan route:clear \
+    && php artisan view:clear \
+    && php artisan optimize:clear
+
+# -------------------------------
+#  Expose API + Reverb Ports
+# -------------------------------
+EXPOSE 8000 8082
+
+# -------------------------------
+#  Copy entrypoint
+# -------------------------------
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+CMD ["/usr/local/bin/entrypoint.sh"]

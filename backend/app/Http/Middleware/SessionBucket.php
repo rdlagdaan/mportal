@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Middleware;
 
 use Closure;
@@ -8,31 +7,17 @@ use Illuminate\Http\Request;
 class SessionBucket
 {
     /**
-     * Use as: ->middleware('session.bucket:lrwsis')
-     * Buckets:
-     *  - lrwsis => cookie lrwsis_session, path /app
-     *  - micro  => cookie micro_session,  path /app
-     *  - open   => cookie open_session,   path /app
+     * Usage: session.bucket:lrwsis (or micro/open)
+     * Minimal: itakda lang ang session path sa /app para kumapit ang cookies ng SPA.
      */
     public function handle(Request $request, Closure $next, string $bucket = null)
     {
-        if ($bucket) {
-            $cookieName = match ($bucket) {
-                'lrwsis' => 'lrwsis_session',
-                'micro'  => 'micro_session',
-                'open'   => 'open_session',
-                default  => config('session.cookie', 'laravel_session'),
-            };
-
-            // IMPORTANT: mutate config BEFORE StartSession runs
+        if (in_array($bucket, ["lrwsis","micro","open"], true)) {
             config([
-                'session.cookie'     => $cookieName,
-                'session.path'       => '/app',                         // scope to /app
-                'session.domain'     => config('session.domain'),       // leave as-is
-                'session.same_site'  => config('session.same_site', 'lax'),
+                "session.path"   => "/app",
+                "session.secure" => true,
             ]);
         }
-
         return $next($request);
     }
 }

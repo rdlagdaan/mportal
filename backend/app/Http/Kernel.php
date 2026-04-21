@@ -21,6 +21,11 @@ class Kernel extends HttpKernel
         \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
         \App\Http\Middleware\TrimStrings::class,
         \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+
+        //mobile
+        \Illuminate\Foundation\Http\Middleware\CheckForMaintenanceMode::class,
+        \App\Http\Middleware\TrustHosts::class,
+        \App\Http\Middleware\ValidateDeviceAuth::class,
     ];
 
     /**
@@ -35,14 +40,21 @@ class Kernel extends HttpKernel
             \Illuminate\Session\Middleware\StartSession::class,
             // \Illuminate\Session\Middleware\AuthenticateSession::class,
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \App\Http\Middleware\VerifyCsrfToken::class,
+            // \App\Http\Middleware\VerifyCsrfToken::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+
+            //mobile
+            \Illuminate\Session\Middleware\AddSessionTokenToResponse::class,
         ],
 
         'api' => [
             // throttle and bindings
             \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+
+            //mobile
+             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+            'throttle:api', // Rate limiting for API routes
         ],
     ];
 
@@ -73,5 +85,33 @@ class Kernel extends HttpKernel
 
         // 👇 Custom: force Spatie to always check the "web" guard
         'force.web.guard' => \App\Http\Middleware\ForceWebGuard::class,
+
+
+
+        //mobile v1
+        'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
+        'device.auth' => \App\Http\Middleware\ValidateDeviceAuth::class,
+
+        //mobile v2
+        'api.token' => \App\Http\Middleware\AuthenticateApiToken::class,
+    ];
+
+
+    /**
+     * The priority middleware that should be run first.
+     *
+     * @var array
+     */
+    protected $middlewarePriority = [
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+        \Illuminate\Session\Middleware\AuthenticateSession::class,
+        \App\Http\Middleware\EncryptCookies::class,
+        \Illuminate\Http\Middleware\PreventRequestsDuringMaintenance::class,
+        \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
+        \App\Http\Middleware\TrimStrings::class,
+        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        \App\Http\Middleware\TrustHosts::class,
+        \Illuminate\Routing\Middleware\SubstituteBindings::class,
     ];
 }

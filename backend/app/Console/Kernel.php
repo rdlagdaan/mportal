@@ -33,5 +33,12 @@ class Kernel extends ConsoleKernel
                 );
             }
         })->dailyAt('08:00');
+
+         $schedule->command('notifications:send-scheduled')->everyMinute();
     }
+
+//    protected function schedule(Schedule $schedule)
+// {
+//     $schedule->command('notifications:send-scheduled')->everyMinute();
+// }
 }

@@ -1,28 +1,42 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
-use Illuminate\Support\Facades\DB;
 
-//Broadcast::channel('user.{userId}', fn ($user, $userId) => (int)$user->id === (int)$userId);
-
-Broadcast::channel('company.{companyId}.assets', function ($user, $companyId) {
-    return (int) $user->company_id === (int) $companyId;
+/**
+ * IMPORTANT:
+ * - These names DO NOT include the "private-" prefix.
+ *   Echo.private('employee.16') → channel_name sent is "private-employee.16"
+ *   so you declare it here as "employee.{employeeId}".
+ */
+Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
+    return (int) $user->id === (int) $id;
 });
 
 
-Broadcast::channel('employee.{employeeId}', function ($user, $employeeId) {
-    //$empId = optional($user->employee)->id
-    //      ?? DB::table('employees')->where('user_id', $user->id)->value('id');
 
-    //return (int) $empId === (int) $employeeId;
-    return true;
-    
+Broadcast::channel('company.{companyId}.assets', function ($user, $companyId) {
+    return (int)($user->company_id ?? 0) === (int)$companyId;
+});
+
+Broadcast::channel('employee.{employeeId}', function ($user, $employeeId) {
+    // Use a real check if you have $user->employee_id
+    return (int)($user->employee_id ?? 0) === (int)$employeeId;
+
+    // For quick smoke tests, you could temporarily do:
+    // return true;
 });
 
 Broadcast::channel('approver.{employeeId}', function ($user, $employeeId) {
-    //$empId = optional($user->employee)->id
-    //      ?? DB::table('employees')->where('user_id', $user->id)->value('id');
+    return (int)($user->employee_id ?? 0) === (int)$employeeId;
 
-    //return (int) $empId === (int) $employeeId;
-    return true;
+    // Or temporarily:
+    // return true;
 });
+
+
+
+
+Broadcast::channel('App.Models.User.{id}', fn ($user, $id) => (int)$user->id === (int)$id);
+
+// (Optional) your leave/status channel
+Broadcast::channel('leave.status.{id}', fn ($user, $id) => (int)$user->id === (int)$id);

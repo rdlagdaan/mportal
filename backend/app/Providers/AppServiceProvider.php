@@ -32,7 +32,14 @@ class AppServiceProvider extends ServiceProvider
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\URL;   // ← add this
+use Illuminate\Support\Facades\URL; 
+//mobile
+use Laravel\Sanctum\Sanctum; 
+use App\Models\Mobile\PersonalAccessToken;
+use App\Models\Mobile\Event;
+use App\Observers\EventObserver;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Cache\RateLimiting\Limit;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -40,10 +47,24 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        //mobile
+        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+        Event::observe(EventObserver::class);
+        \Log::info("EventObserver REGISTERED");
+
+         RateLimiter::for('geofence', function ($request) {
+        return Limit::perMinute(120)->by(
+            $request->header('X-Device-Auth') ?? $request->ip()
+        );
+        });
+        // mobile
+        
+        //web
         // Force HTTPS in production so redirects use https://
         if (app()->environment('production')) {
             URL::forceScheme('https');
             URL::forceRootUrl(config('app.url')); // uses your APP_URL=https://...
         }
     }
+    
 }

@@ -1,5 +1,6 @@
 <?php
 
+ 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
@@ -54,6 +55,149 @@ use Illuminate\Support\Facades\Broadcast;
 
 use App\Http\Controllers\Assets\LookupController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\Lrwsis\MeController;
+
+use App\Notifications\SimpleBell;
+use App\Http\Middleware\ValidateCsrfToken as AppCsrf;
+use App\Http\Controllers\University\AnnouncementController;
+
+use App\Http\Controllers\University\NoticeController;
+
+use App\Http\Controllers\Student\GradesController;
+use App\Http\Controllers\Student\LedgerController;
+
+// Canonical
+Route::prefix('api')->middleware(['web'])->group(function () {
+    Route::get('/student/ledger', [LedgerController::class, 'index'])
+        ->name('student.ledger.index');
+});
+
+// Alias for /app/api/*
+Route::prefix('app/api')->middleware(['web'])->group(function () {
+    Route::get('/student/ledger', [LedgerController::class, 'index']);
+});
+
+
+// Canonical
+Route::prefix('api')->middleware(['web'])->group(function () {
+    Route::get('/student/grades', [GradesController::class, 'index'])
+        ->name('student.grades.index');
+});
+
+// Alias for /app/api/*
+Route::prefix('app/api')->middleware(['web'])->group(function () {
+    Route::get('/student/grades', [GradesController::class, 'index']);
+});
+
+// Primary API (canonical)
+Route::prefix('api')->middleware(['web'])->group(function () {
+    Route::get('/university/notices', [NoticeController::class, 'index'])
+        ->name('university.notices.index');
+});
+
+// Alias so /app/api/* also works
+Route::prefix('app/api')->middleware(['web'])->group(function () {
+    Route::get('/university/notices', [NoticeController::class, 'index']);
+});
+
+
+
+// Primary API (canonical)
+Route::prefix('api')->middleware(['web'])->group(function () {
+    Route::get('/university/announcements', [AnnouncementController::class, 'index'])
+        ->name('university.announcements.index');
+});
+
+// Alias so /app/api/* also works (no route name needed)
+Route::prefix('app/api')->middleware(['web'])->group(function () {
+    Route::get('/university/announcements', [AnnouncementController::class, 'index']);
+});
+
+
+// quick network probe (public, no auth/csrf)
+Route::get('/api/_probe', function () {
+    return response()->json(['ok' => true, 'at' => '/api/_probe']);
+});
+
+
+
+Route::middleware(['web','session.bucket:lrwsis','force.bucket.cookie','auth:sanctum'])
+    ->get('/api/whoami', function (Request $r) {
+        $u = $r->user();
+        return response()->json([
+            'id'          => $u?->id,
+            'employee_id' => $u?->employee_id,
+        ]);
+    });
+
+
+
+/**
+ * 1) Collapse accidental /app/api/app/api/* to /app/api/*
+ */
+/*Route::any('/app/api/app/api/{any}', function (Request $r, string $any) {
+    $forward = Request::create(
+        "/app/api/{$any}",
+        $r->method(),
+        $r->all(),
+        $r->cookies->all(),
+        $r->files->all(),
+        $r->server->all(),
+        $r->getContent()
+    );
+    return app()->handle($forward);
+})->where('any', '.*');*/
+
+
+
+
+
+
+
+// --- TEMP Health routes to detect path rewriting ---
+Route::get('/app/api/lrwsis/healthz', fn () => response()->json(['ok' => true, 'path' => '/app/api/lrwsis/healthz']));
+//Route::get('/api/lrwsis/healthz',      fn () => response()->json(['ok' => true, 'path' => '/api/lrwsis/healthz']));
+
+
+
+// 1) NO middleware at all
+Route::post('/debug/user-auth-a', function (Request $r) {
+    return response()->json(['hit' => true, 'stage' => 'A', 'body' => $r->all()]);
+});
+
+// 2) web stack, but CSRF explicitly removed
+Route::post('/debug/user-auth-b', function (Request $r) {
+    return response()->json([
+        'hit' => true, 'stage' => 'B',
+        'mw'  => $r->route()->gatherMiddleware(),
+        'body'=> $r->all(),
+    ]);
+})
+->middleware(['web'])
+->withoutMiddleware([AppCsrf::class]);
+
+// 3) FINAL shape: web + sanctum, CSRF removed, go through Broadcast::auth
+Route::post('/debug/user-auth-c', function (Request $r) {
+    return Broadcast::auth($r);
+})
+->middleware(['web', 'auth:sanctum'])
+->withoutMiddleware([AppCsrf::class]);
+
+
+
+
+
+
+
+
+Route::get('/__probe_lrwsis', fn () => response()->json(['ok' => true, 'ts' => time()]));
+
+Route::prefix('app/api/lrwsis')
+    ->middleware(['web'])   // keep it minimal for the probe
+    ->group(function () {
+        Route::get('/_probe', fn (Request $r) => response()->json(['ok' => true]));
+    });
+
 
 /*
 |--------------------------------------------------------------------------
@@ -137,16 +281,46 @@ Route::prefix('app/api/microcredentials')
 //Route::post('/app/broadcasting/auth', [BroadcastController::class, 'authenticate'])
 //    ->middleware(['web','session.bucket:lrwsis','force.bucket.cookie','auth:sanctum']);
 
-Broadcast::routes([
-    'prefix' => 'app/api', // now matches Echo’s /app/api/broadcasting/auth
-    'middleware' => ['web','session.bucket:lrwsis','force.bucket.cookie','auth:sanctum'],
-]);
+
 
 require base_path('routes/channels.php');
+
+
+
+
+
+
 
 Route::prefix('app')
   ->middleware(['web', 'session.bucket:lrwsis', 'force.bucket.cookie']) // ← this is where SessionBucket is applied
   ->group(function () {
+
+    // QR for the form at /app/assets/{id}/qr.svg
+    Route::get('assets/{id}/qr.svg', [QrController::class, 'assetSvg'])
+        ->whereNumber('id')
+        // make it public so it doesn't redirect to /app/login
+        ->withoutMiddleware([\Illuminate\Auth\Middleware\Authenticate::class]);
+
+    // quick network probe (no auth) → GET /app/api/_probe should return 200 JSON
+    Route::get('/api/_probe', fn () => response()->json(['ok' => true, 'at' => '/app/api/_probe']))
+        ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class, 'auth:sanctum']);
+
+    // ⬇️ insert this block anywhere inside this group
+    Route::get('/api/whoami', function (\Illuminate\Http\Request $r) {
+        $u = $r->user();
+        return response()->json([
+            'id'          => $u?->id,
+            'employee_id' => $u?->employee_id, // ok if null
+        ]);
+    })->middleware(['auth:sanctum'])->name('whoami');
+
+    // Auth endpoint for Echo/Reverb (now under /app so /app-scoped cookies are sent)
+    Route::post('/broadcasting/user-auth', function (Request $request) {
+        return Broadcast::auth($request);
+    })->middleware(['auth:sanctum']);
+
+
+
 
     Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
         //Route::post('/broadcasting/auth', [\Illuminate\Broadcasting\BroadcastController::class, 'authenticate']);
@@ -188,11 +362,29 @@ Route::prefix('app')
         ]);
     });
 
+Route::get('/lrwsis/csrf-cookie', [CsrfCookieController::class, 'show'])
+    ->withoutMiddleware(['session.bucket:lrwsis', 'force.bucket.cookie'])
+    ->name('lrwsis.csrf');
+   
+    
+    //Route::get('/lrwsis/csrf-cookie', [CsrfCookieController::class, 'show']);
+    /*Route::prefix('api/lrwsis')->group(function () {
+        Route::post('/login',  [\App\Http\Controllers\Auth\LrwsisAuthController::class, 'login'])->middleware('throttle:30,1')->withoutMiddleware(['session.bucket:lrwsis','force.bucket.cookie'])->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    
+    Route::get('/me', function (Request $r) {
+        $u = $r->user();
+        if (!$u) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        return response()->json([
+            'ok'   => true,
+            'user' => $u->only(['id','name','email']),
+        ]);
+    })->middleware(['auth:sanctum']);    
+    
 
-    Route::get('/lrwsis/csrf-cookie', [\App\Http\Controllers\Auth\AppCsrfCookieController::class, 'show']);
-    Route::prefix('api/lrwsis')->group(function () {
-        Route::post('/login',  [\App\Http\Controllers\Auth\LrwsisAuthController::class, 'login'])->middleware('throttle:30,1');
-        Route::get('/me',      [\App\Http\Controllers\Auth\LrwsisAuthController::class, 'me'])->middleware(['auth:sanctum','app.access:LRWSIS']);
+
+
         Route::post('/logout', [\App\Http\Controllers\Auth\LrwsisAuthController::class, 'logout'])->middleware(['auth:sanctum','app.access:LRWSIS']);
     });
 
@@ -202,7 +394,42 @@ Route::prefix('app')
             ->name('user.modules');
         Route::get('lrwsis/modules', [ModuleAccessController::class, 'userModules']);
 
-    });
+    });*/
+
+ 
+ // /app/... group — idagdag ito sa loob
+Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
+    // pangunahing endpoint na hinihingi ng UI
+    Route::get('user/modules', [ModuleAccessController::class, 'userModules'])
+        ->name('user.modules');
+
+    // optional aliases kung may ibang tumatawag
+    Route::get('lrwsis/modules', [ModuleAccessController::class, 'userModules']);
+    Route::get('modules',        [ModuleAccessController::class, 'userModules']);
+});
+   
+
+Route::prefix('api/lrwsis')->group(function () {
+    Route::post('/login', [\App\Http\Controllers\Auth\LrwsisAuthController::class, 'login'])
+        ->middleware('throttle:30,1')
+        ->withoutMiddleware(['session.bucket:lrwsis','force.bucket.cookie']);
+
+
+    Route::get('/me', function (Request $r) {
+        $u = $r->user();
+        if (!$u) {
+            return response()->json(['message' => 'Unauthenticated'], 401);
+        }
+        return response()->json([
+            'ok'   => true,
+            'user' => $u->only(['id','name','email']),
+        ]);
+    })->middleware(['auth:sanctum']);
+
+    Route::post('/logout', [\App\Http\Controllers\Auth\LrwsisAuthController::class, 'logout'])
+        ->middleware(['auth:sanctum','app.access:LRWSIS']);
+});
+
 
 
     Route::get('/notifications', [NotificationsController::class, 'index']);
@@ -220,7 +447,7 @@ Route::prefix('app')
 
     // Classes
     Route::get   ('/api/assets/classes',      [AssetClassController::class, 'index'])
-        ->middleware(['auth:sanctum','permission:fa.class.view,web']);
+        ->middleware(['auth:sanctum']);
     Route::post  ('/api/assets/classes',      [AssetClassController::class, 'store'])
         ->middleware(['auth:sanctum','permission:fa.class.create,web']);
     Route::patch ('/api/assets/classes/{id}', [AssetClassController::class, 'update'])
@@ -229,9 +456,10 @@ Route::prefix('app')
         ->middleware(['auth:sanctum','permission:fa.class.delete,web']);
 
 
+        
     // Categories
     Route::get   ('/api/assets/categories',       [AssetCategoryController::class, 'index'])
-        ->middleware(['auth:sanctum','permission:fa.category.view,web']);
+        ->middleware(['auth:sanctum']);
     Route::post  ('/api/assets/categories',       [AssetCategoryController::class, 'store'])
         ->middleware(['auth:sanctum','permission:fa.category.create,web']);
     Route::patch ('/api/assets/categories/{id}',  [AssetCategoryController::class, 'update'])
@@ -241,7 +469,7 @@ Route::prefix('app')
 
     // Types
     Route::get   ('/api/assets/types',            [AssetTypeController::class, 'index'])
-        ->middleware(['auth:sanctum','permission:fa.type.view,web']);
+        ->middleware(['auth:sanctum']);
     Route::post  ('/api/assets/types',            [AssetTypeController::class, 'store'])
         ->middleware(['auth:sanctum','permission:fa.type.create,web']);
     Route::patch ('/api/assets/types/{id}',       [AssetTypeController::class, 'update'])
@@ -250,6 +478,11 @@ Route::prefix('app')
         ->middleware(['auth:sanctum','permission:fa.type.delete,web']);
   
     Route::get('/api/settings/{code}', [ApplicationSettingsController::class, 'getSetting']);
+    // ✅ this produces /app/api/settings/{code}
+
+    
+    
+    
     Route::get('assets', [\App\Http\Controllers\AssetController::class, 'index']);  
 
     // Next code (preview/commit at asset creation time)
@@ -265,6 +498,8 @@ Route::prefix('app')
     Route::patch ('assets/{id}',           [AssetController::class, 'update']);
     Route::delete('assets/{id}',           [AssetController::class, 'destroy']);
 
+    //Route::get('/assets/{id}/qr.svg', [AssetDetailController::class, 'qrSvg'])
+    //    ->name('assets.qr');
     // tabs
     Route::post  ('assets/{id}/service',   [AssetController::class, 'addService']);
     Route::get   ('assets/{id}/service',   [AssetController::class, 'listService']);
@@ -424,45 +659,40 @@ Route::prefix('app')
 
 
     // ===== Asset Detail =====
-    Route::get('/assets',        [AssetDetailController::class, 'index'])
-        ->middleware('permission:fa.asset.view');
+    // --- API aliases so /app/api/... works ---
+    Route::prefix('api')->middleware(['auth:sanctum'])->group(function () {
+        // Asset Detail (already added earlier)
+        Route::get   ('/assets',      [\App\Http\Controllers\Assets\AssetDetailController::class, 'index'])
+            ->middleware('permission:fa.asset.view,web');
+        Route::post  ('/assets',      [\App\Http\Controllers\Assets\AssetDetailController::class, 'store'])
+            ->middleware('permission:fa.asset.create,web');
+        Route::get   ('/assets/{id}', [\App\Http\Controllers\Assets\AssetDetailController::class, 'show'])
+            ->middleware('permission:fa.asset.view,web')->whereNumber('id');
+        Route::patch ('/assets/{id}', [\App\Http\Controllers\Assets\AssetDetailController::class, 'update'])
+            ->middleware('permission:fa.asset.update,web')->whereNumber('id');
+        Route::delete('/assets/{id}', [\App\Http\Controllers\Assets\AssetDetailController::class, 'destroy'])
+            ->middleware('permission:fa.asset.delete,web')->whereNumber('id');
 
-    Route::post('/assets',       [AssetDetailController::class, 'store'])
-        ->middleware('permission:fa.asset.create');
+        // --- the extra endpoints you asked about ---
+        Route::post  ('/assets/{id}/picture',   [\App\Http\Controllers\Assets\AssetDetailController::class, 'uploadPicture'])
+            ->middleware('permission:fa.asset.update,web')->whereNumber('id');
 
-    Route::get('/assets/{id}',   [AssetDetailController::class, 'show'])
-        ->middleware('permission:fa.asset.view');
+        Route::get   ('/assets/{id}/children',  [\App\Http\Controllers\Assets\AssetDetailController::class, 'children'])
+            ->middleware('permission:fa.asset.view,web')->whereNumber('id');
 
-    Route::patch('/assets/{id}', [AssetDetailController::class, 'update'])
-        ->middleware('permission:fa.asset.update');
+        // Service logs (index/store are asset-scoped; update/destroy by logId)
+        Route::get   ('/assets/{id}/service-logs', [\App\Http\Controllers\Assets\AssetServiceLogController::class, 'index'])
+            ->middleware('permission:fa.maintenance.view,web')->whereNumber('id');
 
-    // Prefer soft delete (status → ARCHIVED). Add ?hard=1 to hard-delete.
-    Route::delete('/assets/{id}',[AssetDetailController::class, 'destroy'])
-        ->middleware('permission:fa.asset.delete');
+        Route::post  ('/assets/{id}/service-logs', [\App\Http\Controllers\Assets\AssetServiceLogController::class, 'store'])
+            ->middleware('permission:fa.maintenance.create,web')->whereNumber('id');
 
-    // Picture upload
-    Route::post('/assets/{id}/picture', [AssetDetailController::class, 'uploadPicture'])
-        ->middleware('permission:fa.asset.update');
+        Route::patch ('/service-logs/{logId}',     [\App\Http\Controllers\Assets\AssetServiceLogController::class, 'update'])
+            ->middleware('permission:fa.maintenance.update,web')->whereNumber('logId');
 
-    // Children (view only for now)
-    Route::get('/assets/{id}/children', [AssetDetailController::class, 'children'])
-        ->middleware('permission:fa.asset.view');
-
-    // ===== Service Logs =====
-    Route::get('/assets/{id}/service-logs',  [AssetServiceLogController::class, 'index'])
-        ->middleware('permission:fa.maintenance.view');
-
-    Route::post('/assets/{id}/service-logs', [AssetServiceLogController::class, 'store'])
-        ->middleware('permission:fa.maintenance.create');
-
-    Route::patch('/service-logs/{logId}',    [AssetServiceLogController::class, 'update'])
-        ->middleware('permission:fa.maintenance.update');
-
-    Route::delete('/service-logs/{logId}',   [AssetServiceLogController::class, 'destroy'])
-        ->middleware('permission:fa.maintenance.update');
-
-
-
+        Route::delete('/service-logs/{logId}',     [\App\Http\Controllers\Assets\AssetServiceLogController::class, 'destroy'])
+            ->middleware('permission:fa.maintenance.update,web')->whereNumber('logId');
+    });
 
 
 
@@ -474,6 +704,13 @@ Route::prefix('app')
 
 
 
+
+
+Route::prefix('lrwsis')
+    ->middleware(['web', 'auth:sanctum'])   // keep cookie auth
+    ->group(function () {
+        Route::get('/me', [MeController::class, 'show']);
+    });
 
 
 
@@ -503,6 +740,11 @@ Route::prefix('open/api')
             ->name('openu.logout');
     });
 
+
+
+
+
+
 /*
 |--------------------------------------------------------------------------
 | SPA catch-all under /app — must come LAST
@@ -510,9 +752,40 @@ Route::prefix('open/api')
 |--------------------------------------------------------------------------
 */
 Route::get('/app', fn () => response()->file(public_path('app/index.html')));
+
 Route::get('/app/{any}', fn () => response()->file(public_path('app/index.html')))
-    ->where('any', '^(?!(api(?:/|$)|lrwsis/csrf-cookie$|broadcasting(?:/|$))).+');
+    ->where('any', '^(?!(api(?:/|$)|lrwsis/csrf-cookie$|broadcasting(?:/|$)|[0-9a-f]{32}$)).+');
 
 
+Route::middleware('web')->get('/dev/ping-bell/{employeeId}/{what}', function ($employeeId, $what) {
+    $id = (int) $employeeId;
+    $payload = ['ts' => now()->toISOString(), 'who' => $id, 'kind' => $what];
+
+    if ($what === 'status') {
+        event(new \App\Events\LeaveStatusUpdated($id, $payload));
+    } elseif ($what === 'balance') {
+        event(new \App\Events\LeaveBalanceUpdated($id, $payload));
+    } else {
+        event(new \App\Events\LeaveSubmitted($id, $payload));
+    }
+    return ['ok' => true];
+});
+
+
+Route::post('/debug/ping-bell', function (\Illuminate\Http\Request $r) {
+    $u = $r->user();           // must be an authenticated web user
+    if (!$u) { abort(401); }
+    $u->notify(new SimpleBell());
+    return ['ok' => true];
+})->middleware(['web']);
+
+Route::post('/debug/leave-ping', function (\Illuminate\Http\Request $r) {
+    $u = $r->user(); if (!$u) abort(401);
+    event(new \App\Events\LeaveStatusUpdated($u->id, ['msg' => 'hello']));
+    return ['ok' => true];
+})->middleware(['web']);
+
+
+Route::get('app/login', fn () => view('login'))->name('login');
 
 

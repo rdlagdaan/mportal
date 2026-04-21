@@ -14,7 +14,8 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",
-        "simplesoftwareio/simple-qrcode": "*",
+        "predis/predis": "^2",
+        "simplesoftwareio/simple-qrcode": "^4.2",
         "spatie/laravel-permission": "*"
     },
     "require-dev": {
@@ -28,6 +29,9 @@
         "phpunit/phpunit": "^11.5.3"
     },
     "autoload": {
+        "files": [
+    "app/Helpers/GeoHelper.php"
+  ],
         "psr-4": {
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",

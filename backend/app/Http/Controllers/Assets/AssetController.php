@@ -4,6 +4,11 @@ namespace App\Http\Controllers\Assets;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+
+// Using Simple QrCode (auto-discovered)
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class AssetController extends Controller
 {
@@ -30,35 +35,90 @@ class AssetController extends Controller
         return $sql->paginate($per);
     }
 
+      /* Creates an asset, auto-generates asset_number, writes history, writes QR.
+     */
     public function store(Request $req)
     {
-        $companyId = (int)$req->user()->company_id ?? 1;
+        $user = $req->user();
+        $companyId = (int)($user?->company_id ?? 1);
+
+        // NOTE: Frontend uses these names; we validate the minimal “main form” set
         $data = $req->validate([
-            'asset_number'      => 'required|string|max:50',
-            'description'       => 'required|string|max:255',
-            'asset_group_id'    => 'required|integer',
-            'asset_sub_group_id'=> 'nullable|integer',
-            'asset_comp_id'     => 'nullable|integer',
-            'qty'               => 'required|numeric|min:0.01',
-            'life_months'       => 'required|integer|min:1|max:600',
-            'purchased_date'    => 'nullable|date',
-            'reference_no'      => 'nullable|string|max:100',
-            'supplier_name'     => 'nullable|string|max:150',
-            'vat_inclusive'     => 'boolean',
-            'vat_rate'          => 'nullable|numeric|min:0|max:100',
-            'gross_amount'      => 'numeric|min:0',
-            'serialized'        => 'boolean',
-            'manufacturer'      => 'nullable|string|max:150',
-            'brand'             => 'nullable|string|max:150',
-            'model'             => 'nullable|string|max:150',
+            'description'           => 'required|string|max:300',
+            'asset_type'            => 'required|string|max:25',    // 'depreciable' | 'non_depreciable' or lookup id
+            'class_code'            => 'nullable|string|max:25',
+            'category_code'         => 'nullable|string|max:25',
+            'type_code'             => 'nullable|string|max:25',
+            'quantity'              => 'required|numeric|min:1',
+
+            'loan_agreement'        => 'nullable|string|max:50',    // 'Default'|'Lease'|'Loan' (we coerce to bool below)
+            'include_in_audits'     => 'boolean',
+            'last_audited'          => 'nullable|date',
+
+            // optional finance/general fields you already have in the UI
+            'depr_method'           => 'nullable|string|max:50',
+            'workstation_id'        => 'nullable|string|max:50',
         ]);
-        $data['company_id'] = $companyId;
-        $id = DB::table('assets')->insertGetId($data);
-        DB::table('asset_history')->insert([
-            'asset_id'=>$id,'description'=>'Created','user_name'=>$req->user()->name ?? 'system'
-        ]);
-        return response()->json(['id'=>$id], 201);
+
+        // Map UI → DB columns
+        $row = [
+            'company_id'             => $companyId,
+            'description'            => (string)$data['description'],
+            'class_code'             => $data['class_code']   ?? null,
+            'cat_code'               => $data['category_code']?? null,
+            'type_code'              => $data['type_code']    ?? null,
+            'depreciation_type_code' => (string)$data['asset_type'],  // keep as provided by your lookup
+            'quantity'               => (float)$data['quantity'],
+
+            // DB says loan_agreement is boolean; interpret UI:
+            // Default => false; Lease/Loan => true
+            'loan_agreement'         => isset($data['loan_agreement'])
+                                        ? (strtolower($data['loan_agreement']) !== 'default')
+                                        : false,
+
+            'include_in_audits'      => (bool)($data['include_in_audits'] ?? false),
+            'last_audit_date'        => $data['last_audited'] ?? null,
+
+            'asset_depr_method'      => $data['depr_method']  ?? null, // if you plan to use it
+            'workstation_id'         => $data['workstation_id'] ?? ($req->header('X-Workstation') ?? gethostname()),
+            'user_id'                => $user?->id ?? null,
+            'created_at'             => now(),
+            'updated_at'             => now(),
+        ];
+
+        // Transaction to avoid double numbers under concurrency
+        $created = DB::transaction(function () use ($row, $companyId, $user) {
+            // 1) Generate asset_number (yyyymmddNNNN)
+            $assetNumber = $this->makeAssetNumber();
+
+            // 2) Insert into assets
+            $toInsert = $row;
+            $toInsert['asset_number'] = $assetNumber;
+
+            $assetId = DB::table('assets')->insertGetId($toInsert);
+
+            // 3) Write history row
+            DB::table('asset_history')->insert([
+                'asset_id'     => $assetId,
+                'company_id'   => $companyId,
+                'asset_number' => $assetNumber,
+                'time_stamp'   => now(),
+                'description'  => 'Created',
+                'comments'     => null,
+                'username'     => $user?->name ?? 'system',
+                'computer_name'=> $row['workstation_id'] ?? gethostname(),
+                'created_at'   => now(),
+            ]);
+
+            // 4) Generate and save QR (SVG) now — store under public disk
+            $this->writeQr($assetId, $assetNumber);
+
+            return ['id' => $assetId, 'asset_number' => $assetNumber];
+        });
+
+        return response()->json($created, 201);
     }
+
 
     public function show($id)
     {
@@ -136,4 +196,75 @@ class AssetController extends Controller
         return response()->json(['id'=>$pid],201);
     }
     public function listPictures($id){ return DB::table('asset_pictures')->where('asset_id',$id)->orderByDesc('id')->paginate(10); }
+
+/**
+     * GET /assets/{id}/qr.svg
+     * Streams the QR SVG; regenerates if missing.
+     */
+    public function qr(int $id)
+    {
+        $asset = DB::table('assets')->select('id','asset_number')->where('id', $id)->first();
+        if (!$asset) {
+            abort(404, 'Asset not found');
+        }
+
+        $relPath = "qr/assets/{$asset->asset_number}.svg";
+        if (!Storage::disk('public')->exists($relPath)) {
+            // regenerate if missing
+            $this->writeQr($asset->id, $asset->asset_number);
+        }
+
+        $full = Storage::disk('public')->path($relPath);
+        return response()->file($full, ['Content-Type' => 'image/svg+xml; charset=utf-8']);
+    }
+
+    /**
+     * Make a unique asset number with pattern yyyymmddNNNN (0000..9999 daily).
+     * Uses a SELECT MAX LIKE prefix within a SERIALIZABLE transaction.
+     */
+    private function makeAssetNumber(): string
+    {
+        $prefix = now()->format('Ymd'); // yyyymmdd
+        // find the max suffix used today
+        $max = DB::table('assets')
+            ->select(DB::raw("MAX(asset_number) as max_no"))
+            ->where('asset_number', 'LIKE', $prefix.'%')
+            ->lockForUpdate()
+            ->first();
+
+        $nextSeq = 0;
+        if ($max && $max->max_no) {
+            // last 4 chars of max number → int
+            $last = substr($max->max_no, -4);
+            $nextSeq = max( (int)$last + 1, 0 );
+        }
+
+        $suffix = str_pad((string)$nextSeq, 4, '0', STR_PAD_LEFT);
+        return $prefix.$suffix;
+    }
+
+    /**
+     * Generate + save QR SVG for an asset under storage/app/public/qr/assets/{asset_number}.svg
+     * Encodes both id and asset_number (easy to scan + lookup).
+     */
+    private function writeQr(int $assetId, string $assetNumber): void
+    {
+        $payload = json_encode([
+            'id'           => $assetId,
+            'asset_number' => $assetNumber,
+            'type'         => 'asset',
+            'v'            => 1, // for future-proofing
+        ], JSON_UNESCAPED_SLASHES);
+
+        $svg = QrCode::format('svg')
+            ->size(300)
+            ->margin(2)
+            ->generate($payload);
+
+        $relPath = "qr/assets/{$assetNumber}.svg";
+        Storage::disk('public')->put($relPath, $svg);
+    }
+
+
+
 }

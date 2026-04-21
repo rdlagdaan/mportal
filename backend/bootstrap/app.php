@@ -3,57 +3,44 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Middleware\HandleCors;
-use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
+
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__ . '/../routes/web.php',
-        api: __DIR__ . '/../routes/api.php',
-        commands: __DIR__ . '/../routes/console.php',
-        health: '/up',
+        web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
+        health: '/health',
     )
-    ->withProviders([
-        App\Providers\BroadcastChannelsServiceProvider::class, // ← add this line
-    ])
-    ->withMiddleware(function (Middleware $middleware): void {
-        // 1) Aliases — YES, include SessionBucket here
+    ->withMiddleware(function (Middleware $middleware) {
+        // Project aliases (registration only)
         $middleware->alias([
-            'session.bucket'     => \App\Http\Middleware\SessionBucket::class,
-            'app.access'         => \App\Http\Middleware\EnsureUserHasAppAccess::class,
-            'verified'           => \App\Http\Middleware\EnsureEmailIsVerified::class,
-            'role'               => \Spatie\Permission\Middleware\RoleMiddleware::class,
-            'permission'         => \Spatie\Permission\Middleware\PermissionMiddleware::class,
-            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
-            'force.bucket.cookie' => \App\Http\Middleware\ForceBucketedSessionCookie::class,
+            // buckets & helpers
+            'session.bucket'           => \App\Http\Middleware\SessionBucket::class,
+            'force.bucket.cookie'      => \App\Http\Middleware\ForceBucketCookie::class,
+            'force.bucketed.session'   => \App\Http\Middleware\ForceBucketedSessionCookie::class,
+            'force.web.guard'          => \App\Http\Middleware\ForceWebGuard::class,
+            'ensure.user.app'          => \App\Http\Middleware\EnsureUserHasAppAccess::class,
+            'csrf.except.broadcasting' => \App\Http\Middleware\CsrfExceptBroadcasting::class,
+
+            // Spatie Permission
+            'role'                     => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission'               => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission'       => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+
+            // DB schema selector
+            'db.assets'                => \App\Http\Middleware\UseAssetsSchema::class,
+
+            //mobile v2
+            'api.token' => \App\Http\Middleware\AuthenticateApiToken::class,
+
         ]);
 
-        // 2) Web stack — DO NOT include SessionBucket here
-        //    Use only the core CSRF middleware (ValidateCsrfToken), not your custom VerifyCsrfToken.
-        $middleware->web([
-            \Illuminate\Cookie\Middleware\EncryptCookies::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
-            EnsureFrontendRequestsAreStateful::class,
-            HandleCors::class,
-        ]);
-
-        // 3) Global priority — YES, include SessionBucket here before StartSession
-        $middleware->priority([
-            \App\Http\Middleware\SessionBucket::class, // must run before StartSession when present on a route
-            \Illuminate\Cookie\Middleware\EncryptCookies::class,
-            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
-            \Illuminate\Session\Middleware\StartSession::class,
-            \App\Http\Middleware\ForceBucketedSessionCookie::class,  // ← add here
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
-            EnsureFrontendRequestsAreStateful::class,
-            HandleCors::class,
-        ]);
+        // Apply schema selection to the web stack
+        $middleware->web(append: ['db.assets']);
+        $middleware->group('api', []);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
+    ->withExceptions(function (Exceptions $exceptions) {
         //
-    })
-    ->create();
+    })->create();
