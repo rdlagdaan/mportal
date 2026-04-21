@@ -9,3 +9,9 @@
 *.log
 .DS_Store
 Thumbs.db
+backend/.env.mobile
+docker-compose.prod.yml
+backend-backup.tar.gz
+*.tar.gz
+.env
+.env.*
