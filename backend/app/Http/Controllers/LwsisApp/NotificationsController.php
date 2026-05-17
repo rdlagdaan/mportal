@@ -26,6 +26,9 @@ class NotificationsController extends Controller
 public function store(Request $request)
 {
     try {
+        // -------------------------------------------------
+        // VALIDATION
+        // -------------------------------------------------
         $request->validate([
             'title' => 'required|string|max:255',
             'message' => 'required|string',
@@ -47,57 +50,70 @@ public function store(Request $request)
                 ], 400);
             }
 
-            $scheduledAt = Carbon::parse($request->scheduled_at)
-                ->setTimezone('UTC');
+            $scheduledAt = Carbon::parse($request->scheduled_at, 'Asia/Manila')->utc();
         }
 
-        $recipients = (array) $request->input('recipients', []);
-        $collegeIds = (array) $request->input('college_ids', []);
-        $orgUnitIds = (array) $request->input('org_unit_ids', []);
-
-        $recipients = array_filter($recipients);
-        $collegeIds = array_filter($collegeIds);
-        $orgUnitIds = array_filter($orgUnitIds);
+        // -------------------------------------------------
+        // RECIPIENTS INPUT
+        // -------------------------------------------------
+        $recipients = array_filter((array) $request->input('recipients', []));
+        $collegeIds = array_filter((array) $request->input('college_ids', []));
+        $orgUnitIds = array_filter((array) $request->input('org_unit_ids', []));
 
         if (empty($recipients)) {
-            $recipients = ['employees'];
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No recipients specified',
+            ], 400);
         }
 
-        $query = DB::table('iam.users')->where('is_active', true);
-
+        // -------------------------------------------------
+        // 🎯 PRIORITY: SPECIFIC USERS
+        // -------------------------------------------------
         $specificUsers = array_filter($recipients, fn ($r) => is_numeric($r));
-        $userIds = [];
 
         if (!empty($specificUsers)) {
-
             $userIds = array_map('intval', $specificUsers);
+        } else {
 
-        } elseif (in_array('students', $recipients)) {
+            // -------------------------------------------------
+            // 🎯 OTHER TARGET TYPES
+            // -------------------------------------------------
+            $query = DB::table('iam.users')->where('is_active', true);
 
-            $query->where('user_type', 'student');
+            if (in_array('students', $recipients)) {
 
-            if (!empty($collegeIds)) {
-                $query->whereIn('college_id', $collegeIds);
+                $query->where('user_type', 'student');
+
+                if (!empty($collegeIds)) {
+                    $query->whereIn('college_id', $collegeIds);
+                }
+
+                $userIds = $query->pluck('id')->toArray();
+
+            } elseif (in_array('employees', $recipients)) {
+
+                $userIds = DB::table('iam.users as u')
+                    ->join('hris.hr_org_unit_memberships as m', 'u.id', '=', 'm.employee_id')
+                    ->select('u.id')
+                    ->where('u.is_active', true)
+                    ->where('m.is_active', true)
+                    ->where('u.user_type', 'employee')
+                    ->when(!empty($orgUnitIds), fn ($q) => $q->whereIn('m.org_unit_id', $orgUnitIds))
+                    ->distinct()
+                    ->pluck('u.id')
+                    ->toArray();
+
+            } elseif (in_array('all_users', $recipients)) {
+
+                $userIds = $query->pluck('id')->toArray();
+
+            } else {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Invalid recipient type',
+                ], 400);
             }
-
-            $userIds = $query->pluck('id')->toArray();
-
-        } elseif (in_array('employees', $recipients)) {
-
-            $userIds = DB::table('iam.users as u')
-                ->join('hris.hr_org_unit_memberships as m', 'u.id', '=', 'm.employee_id')
-                ->select('u.id')
-                ->where('u.is_active', true)
-                ->where('m.is_active', true)
-                ->where('u.user_type', 'employee')
-                ->when(!empty($orgUnitIds), fn ($q) => $q->whereIn('m.org_unit_id', $orgUnitIds))
-                ->distinct()
-                ->pluck('u.id')
-                ->toArray();
-
-        } elseif (in_array('all_users', $recipients)) {
-
-            $userIds = $query->pluck('id')->toArray();
         }
 
         $userIds = array_values(array_unique($userIds));
@@ -109,17 +125,24 @@ public function store(Request $request)
             ], 400);
         }
 
+        // -------------------------------------------------
+        // CREATE NOTIFICATION
+        // -------------------------------------------------
         $notification = Notification::create([
-            'title' => $title,
-            'message' => $message,
-            'type' => 'general',
-            'created_by' => null,
+            'title'        => $title,
+            'message'      => $message,
+            'type'         => 'general',
+            'created_by'   => null,
             'scheduled_at' => $scheduledAt,
-            'send_status' => $sendMode === 'scheduled' ? 'pending' : 'sent',
+            'send_status'  => $sendMode === 'scheduled' ? 'pending' : 'sent',
         ]);
 
+        // -------------------------------------------------
+        // FILE ATTACHMENTS
+        // -------------------------------------------------
         if ($request->hasFile('attachments')) {
             foreach ($request->file('attachments') as $file) {
+
                 $path = $file->store('images', 'public');
 
                 DB::table('mobile.notification_attachments')->insert([
@@ -134,7 +157,11 @@ public function store(Request $request)
             }
         }
 
+        // -------------------------------------------------
+        // SAVE USER NOTIFICATIONS
+        // -------------------------------------------------
         foreach ($userIds as $uid) {
+
             IamUserNotification::updateOrCreate(
                 [
                     'user_id' => $uid,
@@ -142,11 +169,14 @@ public function store(Request $request)
                 ],
                 [
                     'is_read' => false,
-                    'delivered_at' => $sendMode === 'now' ? now() : null,
+                    'delivered_at' => $sendMode === 'scheduled' ? null : now(),
                 ]
             );
         }
 
+        // -------------------------------------------------
+        // SCHEDULED (STOP HERE)
+        // -------------------------------------------------
         if ($sendMode === 'scheduled') {
             return response()->json([
                 'status' => 'success',
@@ -156,11 +186,16 @@ public function store(Request $request)
             ]);
         }
 
+        // -------------------------------------------------
+        // SEND PUSH NOW
+        // -------------------------------------------------
         $sentTokens = 0;
 
         foreach ($userIds as $uid) {
+
             $unreadCount = IamUserNotification::where('user_id', $uid)
                 ->where('is_read', false)
+                ->whereNotNull('delivered_at')
                 ->count();
 
             $tokens = DeviceUserToken::where('user_id', $uid)
@@ -168,22 +203,25 @@ public function store(Request $request)
                 ->toArray();
 
             foreach ($tokens as $token) {
-                if (str_starts_with($token, 'ExponentPushToken')) {
-                    Http::post('https://exp.host/--/api/v2/push/send', [
-                        'to'       => $token,
-                        'sound'    => 'default',
-                        'title'    => $title,
-                        'body'     => $message,
-                        'priority' => 'high',
-                        'badge'    => $unreadCount,
-                        'data'     => [
-                            'notification_id' => $notification->id,
-                            'user_id'         => $uid,
-                        ],
-                    ]);
 
-                    $sentTokens++;
+                if (!str_starts_with($token, 'ExponentPushToken')) {
+                    continue;
                 }
+
+                Http::post('https://exp.host/--/api/v2/push/send', [
+                    'to'       => $token,
+                    'sound'    => 'default',
+                    'title'    => $title,
+                    'body'     => $message,
+                    'priority' => 'high',
+                    'badge'    => $unreadCount,
+                    'data'     => [
+                        'notification_id' => $notification->id,
+                        'user_id'         => $uid,
+                    ],
+                ]);
+
+                $sentTokens++;
             }
         }
 
@@ -196,7 +234,8 @@ public function store(Request $request)
         ]);
 
     } catch (\Throwable $e) {
-        \Log::error('Notification Error', [
+
+        Log::error('Notification Error', [
             'message' => $e->getMessage(),
             'trace' => $e->getTraceAsString(),
         ]);
@@ -405,6 +444,7 @@ public function store(Request $request)
 
         $userNotifications = IamUserNotification::with('notification')
             ->where('user_id', $userId)
+            ->whereNotNull('delivered_at')
             ->get()
             ->map(function ($item) {
                 $n = $item->notification;

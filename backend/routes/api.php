@@ -19,25 +19,25 @@ use App\Http\Controllers\LwsisApp\UserLocationController;
 use App\Http\Controllers\LwsisApp\HrCollegesController;
 use App\Http\Controllers\LwsisApp\HrOrgUnitsController;
 use App\Http\Controllers\LwsisApp\IamUsersController;
+use App\Http\Controllers\LwsisApp\ScheduleController;
+use App\Http\Controllers\LwsisApp\UserGeofencingController;
+use App\Http\Controllers\LwsisApp\admin\AdminUserDeviceController;
 // v2
 Route::prefix('lwsis')->group(function () {
 
     // PUBLIC ROUTES
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login']);    
     Route::post('/biometrics-login', [AuthController::class, 'biometricLogin']);
 
     // ADMIN ROUTES
     Route::post('/send/notifications', [NotificationsController::class, 'store']);
-    // Route::post('/send/notifications/students', [NotificationsController::class, 'sendToStudents']);
-    // Route::post('/send/notifications/employees', [NotificationsController::class, 'sendToEmployees']);
-    // Route::post('/send/notifications/org-unit', [NotificationsController::class, 'sendToOrgUnit']);
-    // Route::post('/send/notifications/college', [NotificationsController::class, 'sendToCollege']);
-    // Route::post('/send/notifications/office', [NotificationsController::class, 'sendToOffice']);
     Route::get('/colleges', [HrCollegesController::class, 'getColleges']);
     Route::get('/org-units', [HrOrgUnitsController::class, 'getOrgUnits']);
     Route::get('/users', [IamUsersController::class, 'getAllUsers']);
     Route::get('/users/{id}', [IamUsersController::class, 'getUserById']);
-    
+    Route::post('/admin/users/{userId}/reset-device', [AdminUserDeviceController::class, 'resetDevice']);
+    Route::get('/admin/users', [AdminUserDeviceController::class, 'getUsers']);
+    Route::post('/device-check', [AuthController::class, 'deviceCheck']);
 
 
     // PROTECTED ROUTES
@@ -76,6 +76,11 @@ Route::prefix('lwsis')->group(function () {
             Route::get('/zones', [UserLocationController::class, 'zones']);
             Route::post('/update', [UserLocationController::class, 'update']); 
         });
+
+
+        Route::get('/my-schedule', [ScheduleController::class, 'getMySchedule']);
+
+        Route::post('/geofencing/update', [UserGeofencingController::class, 'geofencingUpdate']);
 
     });
 

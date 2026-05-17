@@ -40,3 +40,7 @@ Broadcast::channel('App.Models.User.{id}', fn ($user, $id) => (int)$user->id ===
 
 // (Optional) your leave/status channel
 Broadcast::channel('leave.status.{id}', fn ($user, $id) => (int)$user->id === (int)$id);
+
+Broadcast::channel('user.{id}', function ($user, $id) {
+    return (int) $user->id === (int) $id;
+});

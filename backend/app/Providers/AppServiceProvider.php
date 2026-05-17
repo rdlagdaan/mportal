@@ -35,7 +35,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL; 
 //mobile
 use Laravel\Sanctum\Sanctum; 
-use App\Models\Mobile\PersonalAccessToken;
+// use App\Models\Mobile\PersonalAccessToken;
 use App\Models\Mobile\Event;
 use App\Observers\EventObserver;
 use Illuminate\Support\Facades\RateLimiter;
@@ -48,7 +48,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         //mobile
-        Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
+        // Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
         Event::observe(EventObserver::class);
         \Log::info("EventObserver REGISTERED");
 

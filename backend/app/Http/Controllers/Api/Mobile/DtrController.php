@@ -7,6 +7,7 @@ use App\Models\Mobile\DailyTimeRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use App\Models\Mobile\GeofenceZone;
+use App\Models\LwsisApp\Hris\EmployeeWeeklyScheduleRequest;
 
 class DtrController extends Controller
 {
@@ -29,11 +30,11 @@ class DtrController extends Controller
         ]);
 
         // 🔥 Replace this with your real geofence validation
-        if (!$this->isInsideCampus($request->lat, $request->lng)) {
-            return response()->json([
-                'message' => 'You must be inside your assigned campus to time in.'
-            ], 403);
-        }
+        // if (!$this->isInsideCampus($request->lat, $request->lng)) {
+        //     return response()->json([
+        //         'message' => 'You must be inside your assigned campus to time in.'
+        //     ], 403);
+        // }
 
         $today = Carbon::today();
         $now = Carbon::now();
@@ -96,20 +97,25 @@ class DtrController extends Controller
             ], 409);
         }
 
-        if (!$this->isInsideCampus($request->lat, $request->lng)) {
-    return response()->json([
-        'message' => 'You must be inside your assigned campus to time out.'
-    ], 403);
-}
+//         if (!$this->isInsideCampus($request->lat, $request->lng)) {
+//     return response()->json([
+//         'message' => 'You must be inside your assigned campus to time out.'
+//     ], 403);
+// }
 
         $dtr->time_out = $now;
         $dtr->time_out_lat = $request->lat;
         $dtr->time_out_lng = $request->lng;
 
+        // $dtr->attendance_status = $this->computeStatus(
+        //     $dtr->time_in,
+        //     $dtr->time_out
+        // );
         $dtr->attendance_status = $this->computeStatus(
-            $dtr->time_in,
-            $dtr->time_out
-        );
+    $user->id,
+    $dtr->time_in,
+    $dtr->time_out
+);
         
 
         $dtr->save();
@@ -121,33 +127,78 @@ class DtrController extends Controller
     }
 
     // ========== ATTENDANCE RULE ENGINE ==========
-    private function computeStatus($timeIn, $timeOut)
-    {
-        $in = Carbon::parse($timeIn)->format('H:i:s');
-        $out = Carbon::parse($timeOut)->format('H:i:s');
+    private function computeStatus($userId, $timeIn, $timeOut)
+{
+    $schedule = $this->getTodaySchedule($userId);
 
-        // 1️⃣ Half Day if out <= 12:00
-        if ($out <= '12:00:00') {
-            return 'half_day';
-        }
-
-        // 2️⃣ Undertime if out between 3:00–4:59
-        if ($out >= '15:00:00' && $out <= '16:59:59') {
-            return 'undertime';
-        }
-
-        // 3️⃣ Half Day if in 12:00–1:10 AND out >= 5:00
-        if ($in >= '12:00:00' && $in <= '13:10:00' && $out >= '17:00:00') {
-            return 'half_day';
-        }
-
-        // 4️⃣ Late if in > 8:10
-        if ($in > '08:10:00') {
-            return 'late';
-        }
-
-        return 'present';
+    if (!$schedule || !$schedule->is_workday) {
+        return 'rest_day';
     }
+
+    $actualIn = Carbon::parse($timeIn);
+    $actualOut = Carbon::parse($timeOut);
+
+    $scheduledIn = Carbon::parse($schedule->time_in);
+    $scheduledOut = Carbon::parse($schedule->time_out);
+
+    // 🔥 compute hours (accurate)
+    $workMinutes = $actualOut->diffInMinutes($actualIn);
+
+    if ($schedule->break_start && $schedule->break_end) {
+        $breakMinutes = Carbon::parse($schedule->break_end)
+            ->diffInMinutes(Carbon::parse($schedule->break_start));
+
+        $workMinutes -= $breakMinutes;
+    }
+
+    $workHours = $workMinutes / 60;
+
+    // 🔥 RULES (correct order)
+
+    // 1️⃣ HALF DAY
+    if ($workHours < 5) {
+        return 'half_day';
+    }
+
+    // 2️⃣ LATE
+    if ($actualIn->gt($scheduledIn->copy()->addMinutes(10))) {
+        return 'late';
+    }
+
+    // 3️⃣ UNDERTIME
+    if ($actualOut->lt($scheduledOut)) {
+        return 'undertime';
+    }
+
+    return 'present';
+}
+    // private function computeStatus($timeIn, $timeOut)
+    // {
+    //     $in = Carbon::parse($timeIn)->format('H:i:s');
+    //     $out = Carbon::parse($timeOut)->format('H:i:s');
+
+    //     // 1️⃣ Half Day if out <= 12:00
+    //     if ($out <= '12:00:00') {
+    //         return 'half_day';
+    //     }
+
+    //     // 2️⃣ Undertime if out between 3:00–4:59
+    //     if ($out >= '15:00:00' && $out <= '16:59:59') {
+    //         return 'undertime';
+    //     }
+
+    //     // 3️⃣ Half Day if in 12:00–1:10 AND out >= 5:00
+    //     if ($in >= '12:00:00' && $in <= '13:10:00' && $out >= '17:00:00') {
+    //         return 'half_day';
+    //     }
+
+    //     // 4️⃣ Late if in > 8:10
+    //     if ($in > '08:10:00') {
+    //         return 'late';
+    //     }
+
+    //     return 'present';
+    // }
 
     // 🔥 TEMP campus check (replace with your real geofence zone)
    
@@ -214,6 +265,34 @@ private function distanceMeters($lat1, $lon1, $lat2, $lon2)
     ));
 
     return $angle * $earthRadius;
+}
+
+private function getTodaySchedule($userId)
+{
+    // 🔍 get employee_id
+    $employeeLink = \DB::table('iam.user_employee_links')
+        ->where('user_id', $userId)
+        ->first();
+
+    if (!$employeeLink) return null;
+
+    $employeeId = $employeeLink->employee_id;
+
+    // 🔍 get approved schedule
+    $schedule = EmployeeWeeklyScheduleRequest::with('details')
+        ->where('employee_id', $employeeId)
+        ->where('status', 'APPROVED')
+        ->latest('submitted_at')
+        ->first();
+
+    if (!$schedule) return null;
+
+    // 🔍 get today day_of_week (1-7)
+    $dayOfWeek = Carbon::now()->dayOfWeekIso; // 1 = Monday
+
+    return $schedule->details
+        ->where('day_of_week', $dayOfWeek)
+        ->first();
 }
 
 }
