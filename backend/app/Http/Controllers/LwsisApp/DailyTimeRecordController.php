@@ -19,7 +19,6 @@ class DailyTimeRecordController extends Controller
     /* ============================================================
         AUTH HELPERS
     ============================================================ */
-
     private function getAuthUser(Request $request)
     {
         $userId =

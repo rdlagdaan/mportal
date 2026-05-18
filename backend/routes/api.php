@@ -125,12 +125,11 @@ use App\Http\Controllers\Api\Mobile\ImportUserController;
 use App\Http\Controllers\Api\Mobile\DtrController;
 
 Route::middleware('auth:sanctum')->group(function () {
-    Route::post('/dtr/time-in', [DtrController::class, 'timeIn']);
-    Route::post('/dtr/time-out', [DtrController::class, 'timeOut']);
-    Route::get('/dtr/today', [DtrController::class, 'today']); 
-    Route::get('/dtr/month', [DtrController::class, 'monthly']);
+    Route::post('/v1dtr/time-in', [DtrController::class, 'timeIn']);
+    Route::post('/v1dtr/time-out', [DtrController::class, 'timeOut']);
+    Route::get('/v1dtr/today', [DtrController::class, 'today']);
+    Route::get('/v1dtr/month', [DtrController::class, 'monthly']);
 });
-
 Route::post('/import-users', [ImportUserController::class, 'import']);
 
 

@@ -15,7 +15,7 @@ class Kernel extends ConsoleKernel
         // (optional) keep if needed
         $schedule->command('notifications:send-scheduled')->everyMinute();
 
-        $schedule->command('dtr:timeout-reminder')->everyMinute();
+        // $schedule->command('dtr:timeout-reminder')->everyMinute();
     }
 
     protected function commands(): void

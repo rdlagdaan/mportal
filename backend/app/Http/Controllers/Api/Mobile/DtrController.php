@@ -11,7 +11,7 @@ use App\Models\LwsisApp\Hris\EmployeeWeeklyScheduleRequest;
 
 class DtrController extends Controller
 {
-    // ========== TIME IN ==========
+    // ========== TIME IN =========
     public function timeIn(Request $request)
     {
         $user = $request->user();
