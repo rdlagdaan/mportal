@@ -74,6 +74,9 @@ class AuthController extends Controller
                     'email' => $user->email,
                     'name' => $user->name,
                     'user_type' => $user->user_type,
+
+                    // 'privacy_accepted' => (bool) $user->privacy_accepted,
+                    // 'privacy_accepted_at' => $user->privacy_accepted_at,
                 ],
                 'profile' => [
                     'employee_id' => $employeeId
@@ -249,7 +252,10 @@ return response()->json([
         'id' => $user->id,
         'email' => $user->email,
         'name' => $user->name,
-        'user_type' => $user->user_type, // 🔥 REQUIRED
+        'user_type' => $user->user_type, 
+
+        'privacy_accepted' => (bool) $user->privacy_accepted,
+        'privacy_accepted_at' => $user->privacy_accepted_at,
     ],
     'profile' => [
         'employee_id' => $employeeId
@@ -290,6 +296,45 @@ return response()->json([
             ], 500);
         }
     }
+
+
+    /* ============================================================
+                ACCEPT PRIVACY POLICY
+============================================================ */
+// public function acceptPrivacy(Request $request)
+// {
+//     try {
+
+//         $userId = $request->attributes->get('auth_user_id');
+
+//         if (!$userId) {
+//             return response()->json([
+//                 'status' => 'error',
+//                 'message' => 'Unauthorized'
+//             ], 401);
+//         }
+
+//         DB::table('iam.users')
+//             ->where('id', $userId)
+//             ->update([
+//                 'privacy_accepted' => true,
+//                 'privacy_accepted_at' => now(),
+//             ]);
+
+//         return response()->json([
+//             'status' => 'success',
+//             'message' => 'Privacy policy accepted'
+//         ]);
+
+//     } catch (\Exception $e) {
+
+//         return response()->json([
+//             'status' => 'error',
+//             'message' => 'Failed to accept privacy policy',
+//             'error' => $e->getMessage()
+//         ], 500);
+//     }
+// }
 
     /* ============================================================
                 DEVICE CHECK (FOR FACE ID LOGIN)

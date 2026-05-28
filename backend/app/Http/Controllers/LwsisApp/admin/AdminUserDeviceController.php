@@ -13,7 +13,7 @@ class AdminUserDeviceController extends Controller
 {
 
 public function resetDevice($userId)
-{
+{   
     try {
         DB::transaction(function () use ($userId) {
 
@@ -21,9 +21,9 @@ public function resetDevice($userId)
             UserDevice::where('user_id', $userId)->delete();
 
             //  2. DELETE AUTH TOKENS
-            DB::table('iam.api_tokens')
-                ->where('user_id', $userId)
-                ->delete();
+            // DB::table('iam.api_tokens')
+            //     ->where('user_id', $userId)
+            //     ->delete();
 
             //  3. DELETE PUSH TOKENS
             DeviceUserToken::where('user_id', $userId)->delete();

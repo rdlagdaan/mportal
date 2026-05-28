@@ -44,6 +44,7 @@ Route::prefix('lwsis')->group(function () {
     Route::middleware('api.token')->group(function () {
         Route::post('/biometrics-toggle', [AuthController::class, 'updateBiometrics']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        //Route::post('/privacy/accept', [AuthController::class, 'acceptPrivacy']);
         
 
         Route::get('/me', [ProfileController::class, 'me']);
