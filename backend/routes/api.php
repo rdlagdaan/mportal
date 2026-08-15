@@ -22,6 +22,11 @@ use App\Http\Controllers\LwsisApp\IamUsersController;
 use App\Http\Controllers\LwsisApp\ScheduleController;
 use App\Http\Controllers\LwsisApp\UserGeofencingController;
 use App\Http\Controllers\LwsisApp\admin\AdminUserDeviceController;
+use App\Http\Controllers\LwsisApp\ICTOServiceDeskController;
+use App\Http\Controllers\LwsisApp\KioskFaceController;
+use App\Http\Controllers\LwsisApp\GeofencePolygonController;
+use App\Http\Controllers\LwsisApp\admin\AdminDailyTimeRecordController;
+
 // v2
 Route::prefix('lwsis')->group(function () {
 
@@ -38,16 +43,27 @@ Route::prefix('lwsis')->group(function () {
     Route::post('/admin/users/{userId}/reset-device', [AdminUserDeviceController::class, 'resetDevice']);
     Route::get('/admin/users', [AdminUserDeviceController::class, 'getUsers']);
     Route::post('/device-check', [AuthController::class, 'deviceCheck']);
+    Route::get('/admin/live-dtr',[AdminDailyTimeRecordController::class, 'index']);
 
 
     // PROTECTED ROUTES
     Route::middleware('api.token')->group(function () {
         Route::post('/biometrics-toggle', [AuthController::class, 'updateBiometrics']);
         Route::post('/logout', [AuthController::class, 'logout']);
-        //Route::post('/privacy/accept', [AuthController::class, 'acceptPrivacy']);
-        
+        Route::post('/privacy/accept', [AuthController::class, 'acceptPrivacy']);
 
         Route::get('/me', [ProfileController::class, 'me']);
+
+        // KIOSK FACE REGISTRATION
+        Route::get(
+            '/kiosk/face-status',
+            [KioskFaceController::class, 'status']
+        );
+
+        Route::post(
+            '/kiosk/face-enroll',
+            [KioskFaceController::class, 'enroll']
+        );
 
         Route::get('/notifications', [NotificationsController::class, 'index']);
         Route::get('/notifications/{id}', [NotificationsController::class, 'show']);
@@ -74,14 +90,30 @@ Route::prefix('lwsis')->group(function () {
         Route::prefix('location')->group(function () {
             Route::post('/check', [UserLocationController::class, 'check']);
             Route::post('/toggle', [UserLocationController::class, 'toggle']);
+            
+            // OLD circle geofence
             Route::get('/zones', [UserLocationController::class, 'zones']);
+
             Route::post('/update', [UserLocationController::class, 'update']); 
+
+
+            // NEW polygon geofence
+    Route::get(
+        '/polygon-zones',
+        [GeofencePolygonController::class, 'index']
+    );
         });
 
 
         Route::get('/my-schedule', [ScheduleController::class, 'getMySchedule']);
 
         Route::post('/geofencing/update', [UserGeofencingController::class, 'geofencingUpdate']);
+
+
+        Route::get(
+        '/icto/dashboard',
+        [ICTOServiceDeskController::class, 'dashboard']
+    );
 
     });
 

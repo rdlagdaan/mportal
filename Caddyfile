@@ -159,3 +159,20 @@ mytua.app, www.mytua.app {
     reverse_proxy erp_frontend:5173
   }
 }
+
+# ==========================================
+# TUA ATTENDANCE KIOSK
+# ==========================================
+
+kiosk.178.128.111.118.sslip.io {
+
+    # FastAPI backend
+    handle /api/* {
+        reverse_proxy tua-kiosk-backend:8000
+    }
+
+    # Next.js frontend
+    handle {
+        reverse_proxy tua-kiosk-frontend:3000
+    }
+}

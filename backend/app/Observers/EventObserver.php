@@ -29,7 +29,7 @@ class EventObserver
 
             NotificationHelper::sendPushAndSaveToUsers(
                 $userIds,
-                "🚀 Event Update: {$event->event_name}",
+                "Event Update: {$event->event_name}",
                 "The event '{$event->event_name}' is now ongoing!",
                 'event',
                 [
@@ -54,7 +54,7 @@ class EventObserver
 
             NotificationHelper::sendPushAndSaveToUsers(
                 $userIds,
-                "✅ Event Update: {$event->event_name}",
+                "Event Update: {$event->event_name}",
                 "The event '{$event->event_name}' has ended.",
                 'event',
                 [

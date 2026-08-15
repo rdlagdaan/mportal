@@ -39,11 +39,6 @@ class HrOrgUnitMembership extends Model
         return $this->belongsTo(HrEmployee::class, 'employee_id');
     }
 
-    public function orgUnit()
-    {
-        return $this->belongsTo(HrOrgUnit::class, 'org_unit_id');
-    }
-
     public function positionClass()
     {
         return $this->belongsTo(HrPositionClass::class, 'position_class_id');
@@ -53,4 +48,11 @@ class HrOrgUnitMembership extends Model
     {
         return $this->belongsTo(HrJobTitle::class, 'job_title_id');
     }
+    public function orgUnit()
+{
+    return $this->belongsTo(
+        HrOrgUnit::class,
+        'org_unit_id'
+    );
+}
 }

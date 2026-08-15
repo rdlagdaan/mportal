@@ -30,7 +30,9 @@ class User extends Authenticatable
         'company_id',
         'open_enabled',
         'biometrics_enabled',
-        'location_enabled'
+        'location_enabled',
+        'privacy_accepted',
+        'privacy_accepted_at',
     ];
 
     protected $hidden = [
@@ -43,7 +45,9 @@ class User extends Authenticatable
         'biometrics_enabled' => 'boolean',
         'location_enabled' => 'boolean',
         'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'updated_at' => 'datetime',
+        'privacy_accepted' => 'boolean',
+        'privacy_accepted_at' => 'datetime',
     ];
 
     public function apiTokens()

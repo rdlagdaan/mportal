@@ -8,9 +8,11 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 
+
 use App\Models\LwsisApp\User;
 use App\Models\LwsisApp\UserDevice;
 use App\Models\LwsisApp\UserBiometricToken;
+use App\Models\LwsisApp\Hris\HrEmployee;
 
 class AuthController extends Controller
 {
@@ -28,8 +30,15 @@ class AuthController extends Controller
             ]);
 
             // 🔍 Find user
+            // $user = DB::table('iam.users')
+            //     ->where('email', $request->email)
+            //     ->where('is_active', true)
+            //     ->first();
+
+            $email = trim($request->email);
+
             $user = DB::table('iam.users')
-                ->where('email', $request->email)
+                ->whereRaw('LOWER(email) = LOWER(?)', [$email])
                 ->where('is_active', true)
                 ->first();
 
@@ -66,6 +75,8 @@ class AuthController extends Controller
                 ->where('user_id', $user->id)
                 ->value('employee_id');
 
+            $employee = HrEmployee::find($employeeId);
+
             return response()->json([
                 'status' => 'success',
                 'token' => $plainToken,
@@ -75,11 +86,14 @@ class AuthController extends Controller
                     'name' => $user->name,
                     'user_type' => $user->user_type,
 
-                    // 'privacy_accepted' => (bool) $user->privacy_accepted,
-                    // 'privacy_accepted_at' => $user->privacy_accepted_at,
+                    'privacy_accepted' => (bool) $user->privacy_accepted,
+                    'privacy_accepted_at' => $user->privacy_accepted_at,
                 ],
                 'profile' => [
-                    'employee_id' => $employeeId
+                    'employee_id' => $employeeId,
+                    'photo_url' => $employee?->photo_path
+                    ? url($employee->photo_path)
+                    : null,
                 ]
             ]);
 
@@ -245,6 +259,8 @@ $employeeId = DB::table('iam.user_employee_links')
     ->where('user_id', $user->id)
     ->value('employee_id');
 
+$employee = HrEmployee::find($employeeId);
+
 return response()->json([
     'status' => 'success',
     'token' => $plainToken,
@@ -258,8 +274,11 @@ return response()->json([
         'privacy_accepted_at' => $user->privacy_accepted_at,
     ],
     'profile' => [
-        'employee_id' => $employeeId
-    ]
+    'employee_id' => $employeeId,
+    'photo_url' => $employee?->photo_path
+        ? url($employee->photo_path)
+        : null,
+]
 ]);
     }
 
@@ -301,40 +320,40 @@ return response()->json([
     /* ============================================================
                 ACCEPT PRIVACY POLICY
 ============================================================ */
-// public function acceptPrivacy(Request $request)
-// {
-//     try {
+public function acceptPrivacy(Request $request)
+{
+    try {
 
-//         $userId = $request->attributes->get('auth_user_id');
+        $userId = $request->attributes->get('auth_user_id');
 
-//         if (!$userId) {
-//             return response()->json([
-//                 'status' => 'error',
-//                 'message' => 'Unauthorized'
-//             ], 401);
-//         }
+        if (!$userId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
+        }
 
-//         DB::table('iam.users')
-//             ->where('id', $userId)
-//             ->update([
-//                 'privacy_accepted' => true,
-//                 'privacy_accepted_at' => now(),
-//             ]);
+        DB::table('iam.users')
+            ->where('id', $userId)
+            ->update([
+                'privacy_accepted' => true,
+                'privacy_accepted_at' => now(),
+            ]);
 
-//         return response()->json([
-//             'status' => 'success',
-//             'message' => 'Privacy policy accepted'
-//         ]);
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Privacy policy accepted'
+        ]);
 
-//     } catch (\Exception $e) {
+    } catch (\Exception $e) {
 
-//         return response()->json([
-//             'status' => 'error',
-//             'message' => 'Failed to accept privacy policy',
-//             'error' => $e->getMessage()
-//         ], 500);
-//     }
-// }
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to accept privacy policy',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 
     /* ============================================================
                 DEVICE CHECK (FOR FACE ID LOGIN)

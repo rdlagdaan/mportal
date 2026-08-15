@@ -42,13 +42,23 @@ class ProfileController extends Controller
                     ]);
                 }
 
-                $employee = HrEmployee::with('orgUnit')
-                    ->find($link->employee_id);
+                $employee = HrEmployee::with([
+    'activeOrgMembership.orgUnit',
+])
+->find($link->employee_id);
 
                 $data = $employee ? $employee->toArray() : [];
 
-                $data['biometrics_enabled'] = $user->biometrics_enabled;
-                $data['location_enabled'] = $user->location_enabled;
+                $data['org_unit'] =
+    $employee?->activeOrgMembership?->orgUnit;
+
+$data['photo_path'] =
+    !empty($employee?->photo_path)
+        ? url($employee->photo_path)
+        : null;
+
+$data['biometrics_enabled'] = $user->biometrics_enabled;
+$data['location_enabled'] = $user->location_enabled;
 
                 return response()->json([
                     'type' => 'employee',

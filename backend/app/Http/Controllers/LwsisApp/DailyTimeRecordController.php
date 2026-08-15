@@ -3,51 +3,131 @@
 namespace App\Http\Controllers\LwsisApp;
 
 use App\Http\Controllers\Controller;
+use App\Models\LwsisApp\Hris\HrEmployeeWeeklyScheduleRequest;
+use App\Models\LwsisApp\Hris\HrLeaveRequest;
+use App\Models\LwsisApp\User;
+use App\Models\Mobile\DailyTimeRecord;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
-use App\Models\Mobile\DailyTimeRecord;
-
-use App\Models\LwsisApp\User;
-
-use App\Models\LwsisApp\Hris\HrEmployeeWeeklyScheduleRequest;
-use App\Models\LwsisApp\Hris\HrLeaveRequest;
-
 class DailyTimeRecordController extends Controller
 {
-    /* ============================================================
-        AUTH HELPERS
-    ============================================================ */
-    private function getAuthUser(Request $request)
+    /*
+    |--------------------------------------------------------------------------
+    | Geofence zone IDs
+    |--------------------------------------------------------------------------
+    |
+    | Zone 1: Trinity University of Asia
+    | Zone 2: Trinity Highschool Department
+    |
+    */
+
+    private const TUA_ZONE_ID = 1;
+    private const THS_ZONE_ID = 2;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Authentication helpers
+    |--------------------------------------------------------------------------
+    */
+
+    private function getAuthUser(Request $request): ?User
     {
-        $userId =
-            $request->attributes->get('auth_user_id');
+        $userId = $request->attributes->get('auth_user_id');
 
         return $userId
             ? User::find($userId)
             : null;
     }
 
-    private function ensureEmployee($user)
+    private function ensureEmployee(?User $user): bool
     {
-        return $user &&
-            $user->user_type === 'employee';
+        return $user !== null &&
+            strtolower((string) $user->user_type) === 'employee';
     }
 
-    private function getEmployeeId($userId)
+    private function getEmployeeId(int $userId): ?int
     {
-        return DB::table('iam.user_employee_links')
+        $employeeId = DB::table('iam.user_employee_links')
             ->where('user_id', $userId)
             ->value('employee_id');
+
+        return $employeeId
+            ? (int) $employeeId
+            : null;
     }
 
-    /* ============================================================
-        SCHEDULE HELPERS
-    ============================================================ */
-
-    private function getActiveSchedule($employeeId)
+    private function getEmployeeIdOrFail(User $user): int
     {
+        $employeeId = $this->getEmployeeId($user->id);
+
+        if (!$employeeId) {
+            $this->fail(
+                'Employee profile not found.',
+                404
+            );
+        }
+
+        return $employeeId;
+    }
+
+    private function validateAuthenticatedEmployee(
+        Request $request
+    ): array {
+        $user = $this->getAuthUser($request);
+
+        if (!$user) {
+            $this->fail('Unauthorized.', 401);
+        }
+
+        if (!$this->ensureEmployee($user)) {
+            $this->fail(
+                'DTR is for employees only.',
+                403
+            );
+        }
+
+        $employeeId = $this->getEmployeeIdOrFail($user);
+
+        return [
+            'user' => $user,
+            'employee_id' => $employeeId,
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Response helper
+    |--------------------------------------------------------------------------
+    */
+
+    private function fail(
+        string $message,
+        int $status,
+        array $additionalData = []
+    ): void {
+        throw new HttpResponseException(
+            response()->json(
+                array_merge(
+                    ['message' => $message],
+                    $additionalData
+                ),
+                $status
+            )
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Schedule helpers
+    |--------------------------------------------------------------------------
+    */
+
+    private function getActiveSchedule(
+        int $employeeId
+    ): ?HrEmployeeWeeklyScheduleRequest {
         return HrEmployeeWeeklyScheduleRequest::with('days')
             ->where('employee_id', $employeeId)
             ->where('status', 'APPROVED')
@@ -56,323 +136,716 @@ class DailyTimeRecordController extends Controller
             ->first();
     }
 
-    private function getTodaySchedule($schedule)
-    {
-        $today = now()->dayOfWeekIso;
+    private function getTodaySchedule(
+        HrEmployeeWeeklyScheduleRequest $schedule
+    ) {
+        $dayOfWeek = now()->dayOfWeekIso;
 
         return $schedule->days
-            ->where('day_of_week', $today)
-            ->first();
+            ->firstWhere(
+                'day_of_week',
+                $dayOfWeek
+            );
     }
 
-    private function validateScheduleOrFail($user)
-    {
-        $employeeId =
-            $this->getEmployeeId($user->id);
-
-        if (!$employeeId) {
-            abort(response()->json([
-                'message' =>
-                    'Employee profile not found.'
-            ], 404));
-        }
-
-        $schedule =
-            $this->getActiveSchedule($employeeId);
+    private function validateScheduleOrFail(
+        int $employeeId
+    ) {
+        $schedule = $this->getActiveSchedule($employeeId);
 
         if (!$schedule) {
-            abort(response()->json([
-                'message' =>
-                    'No approved schedule found.'
-            ], 403));
+            $this->fail(
+                'No approved schedule found.',
+                403
+            );
         }
 
-        $todaySchedule =
-            $this->getTodaySchedule($schedule);
+        $todaySchedule = $this->getTodaySchedule($schedule);
 
         if (
             !$todaySchedule ||
             !$todaySchedule->is_workday
         ) {
-            abort(response()->json([
-                'message' =>
-                    'Today is a rest day.'
-            ], 403));
+            $this->fail(
+                'Today is a rest day.',
+                403
+            );
         }
 
         return $todaySchedule;
     }
 
-    /* ============================================================
-        TIME IN
-    ============================================================ */
+    private function isWorkFromHome($scheduleDay): bool
+    {
+        return strtoupper(
+            trim((string) $scheduleDay->modality)
+        ) === 'WFH';
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Organization and geofence helpers
+    |--------------------------------------------------------------------------
+    */
+
+    private function getEmployeeOrgUnit(
+        int $employeeId
+    ): ?object {
+        $today = Carbon::today()->toDateString();
+
+        return DB::table(
+            'hris.hr_org_unit_memberships as membership'
+        )
+            ->join(
+                'hris.hr_org_units as unit',
+                'unit.id',
+                '=',
+                'membership.org_unit_id'
+            )
+            ->where(
+                'membership.employee_id',
+                $employeeId
+            )
+            ->where(
+                'membership.is_active',
+                true
+            )
+            ->where(
+                'membership.is_primary',
+                true
+            )
+            ->where(function ($query) use ($today) {
+                $query
+                    ->whereNull(
+                        'membership.effective_from'
+                    )
+                    ->orWhereDate(
+                        'membership.effective_from',
+                        '<=',
+                        $today
+                    );
+            })
+            ->where(function ($query) use ($today) {
+                $query
+                    ->whereNull(
+                        'membership.effective_to'
+                    )
+                    ->orWhereDate(
+                        'membership.effective_to',
+                        '>=',
+                        $today
+                    );
+            })
+            ->where(
+                'unit.is_active',
+                true
+            )
+            ->select([
+                'unit.id',
+                'unit.code',
+                'unit.name',
+            ])
+            ->first();
+    }
+
+    private function getAssignedGeofence(object $orgUnit): object
+{
+    $orgUnitCode = strtoupper(trim((string) $orgUnit->code));
+
+    $zoneId = $orgUnitCode === 'THS'
+        ? self::THS_ZONE_ID
+        : self::TUA_ZONE_ID;
+
+    $zone = DB::table('mobile.geofence_zones')
+        ->where('id', $zoneId)
+        ->first();
+
+    if (!$zone) {
+        $this->fail(
+            'Assigned geofence zone was not found.',
+            500,
+            [
+                'org_unit_code' => $orgUnitCode,
+                'zone_id' => $zoneId,
+            ]
+        );
+    }
+
+    // Normalize the property names
+    $zone->latitude = (float) $zone->center_lat;
+    $zone->longitude = (float) $zone->center_lng;
+
+    return $zone;
+}
+
+    private function distanceInMeters(
+        float $latitude1,
+        float $longitude1,
+        float $latitude2,
+        float $longitude2
+    ): float {
+        $earthRadius = 6371000;
+
+        $latitudeDifference = deg2rad(
+            $latitude2 - $latitude1
+        );
+
+        $longitudeDifference = deg2rad(
+            $longitude2 - $longitude1
+        );
+
+        $a =
+            sin($latitudeDifference / 2) ** 2 +
+            cos(deg2rad($latitude1)) *
+            cos(deg2rad($latitude2)) *
+            sin($longitudeDifference / 2) ** 2;
+
+        $c = 2 * atan2(
+            sqrt($a),
+            sqrt(1 - $a)
+        );
+
+        return $earthRadius * $c;
+    }
+
+    private function validateEmployeeGeofenceOrFail(
+        int $employeeId,
+        float $latitude,
+        float $longitude
+    ): array {
+        $orgUnit = $this->getEmployeeOrgUnit(
+            $employeeId
+        );
+
+        if (!$orgUnit) {
+            $this->fail(
+                'Active primary organization assignment was not found.',
+                404
+            );
+        }
+
+        $zone = $this->getAssignedGeofence(
+            $orgUnit
+        );
+
+        $zoneLatitude = (float) $zone->latitude;
+        $zoneLongitude = (float) $zone->longitude;
+        $zoneRadius = (float) $zone->radius;
+
+        $distance = $this->distanceInMeters(
+            $latitude,
+            $longitude,
+            $zoneLatitude,
+            $zoneLongitude
+        );
+
+        if ($distance > $zoneRadius) {
+            $this->fail(
+                'You are outside your assigned campus geofence.',
+                403,
+                [
+                    'org_unit_code' =>
+                        strtoupper(
+                            trim((string) $orgUnit->code)
+                        ),
+
+                    'org_unit_name' =>
+                        $orgUnit->name,
+
+                    'allowed_zone' =>
+                        $zone->name,
+
+                    'zone_id' =>
+                        (int) $zone->id,
+
+                    'distance_meters' =>
+                        round($distance, 2),
+
+                    'allowed_radius_meters' =>
+                        $zoneRadius,
+                ]
+            );
+        }
+
+        return [
+            'org_unit' => $orgUnit,
+            'zone' => $zone,
+            'distance' => $distance,
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Time in
+    |--------------------------------------------------------------------------
+    */
 
     public function timeIn(Request $request)
     {
-        $user =
-            $this->getAuthUser($request);
+        $authenticated =
+            $this->validateAuthenticatedEmployee(
+                $request
+            );
 
-        if (!$user) {
-            return response()->json([
-                'message' => 'Unauthorized'
-            ], 401);
-        }
+        /** @var User $user */
+        $user = $authenticated['user'];
 
-        if (!$this->ensureEmployee($user)) {
-            return response()->json([
-                'message' =>
-                    'DTR is for employees only.'
-            ], 403);
-        }
+        $employeeId =
+            $authenticated['employee_id'];
 
-        $request->validate([
-            'lat' => 'required|numeric',
-            'lng' => 'required|numeric',
+        $validated = $request->validate([
+            'lat' => [
+                'required',
+                'numeric',
+                'between:-90,90',
+            ],
+
+            'lng' => [
+                'required',
+                'numeric',
+                'between:-180,180',
+            ],
         ]);
 
-        $this->validateScheduleOrFail($user);
+        $latitude = (float) $validated['lat'];
+        $longitude = (float) $validated['lng'];
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate schedule first
+        |--------------------------------------------------------------------------
+        |
+        | The schedule is checked before geofencing so that WFH employees may
+        | time in from outside the physical campus geofence.
+        |
+        */
+
+        $todaySchedule =
+            $this->validateScheduleOrFail(
+                $employeeId
+            );
+
+        $geofenceData = null;
+
+        if (!$this->isWorkFromHome($todaySchedule)) {
+            $geofenceData =
+                $this->validateEmployeeGeofenceOrFail(
+                    $employeeId,
+                    $latitude,
+                    $longitude
+                );
+        }
 
         $today = Carbon::today();
         $now = Carbon::now();
 
-        $dtr = DailyTimeRecord::firstOrCreate([
-            'user_id' => $user->id,
-            'work_date' => $today,
-        ]);
+        $dtr = DB::transaction(function () use (
+            $user,
+            $today,
+            $now,
+            $latitude,
+            $longitude
+        ) {
+            $existingDtr = DailyTimeRecord::where(
+                'user_id',
+                $user->id
+            )
+                ->whereDate(
+                    'work_date',
+                    $today
+                )
+                ->lockForUpdate()
+                ->first();
 
-        if ($dtr->time_in) {
-            return response()->json([
-                'message' =>
-                    'Already timed in.'
-            ], 409);
-        }
+            if (
+                $existingDtr &&
+                $existingDtr->time_in
+            ) {
+                $this->fail(
+                    'Already timed in.',
+                    409
+                );
+            }
 
-        $dtr->update([
-            
-            'time_in' => $now,
-            'time_in_lat' => $request->lat,
-            'time_in_lng' => $request->lng,
-        ]);
+            $dtr = $existingDtr ??
+                new DailyTimeRecord();
 
-        $dtr->refresh();
+            $dtr->user_id = $user->id;
+            $dtr->work_date = $today;
+            $dtr->time_in = $now;
+            $dtr->time_in_lat = $latitude;
+            $dtr->time_in_lng = $longitude;
+            $dtr->save();
+
+            return $dtr->fresh();
+        });
 
         return response()->json([
             'status' => 'success',
             'message' => 'Time in recorded.',
+            'modality' => $todaySchedule->modality,
+
+            'org_unit_code' =>
+                $geofenceData
+                    ? strtoupper(
+                        trim(
+                            (string)
+                            $geofenceData['org_unit']->code
+                        )
+                    )
+                    : null,
+
+            'geofence_zone' =>
+                $geofenceData
+                    ? [
+                        'id' =>
+                            (int)
+                            $geofenceData['zone']->id,
+
+                        'name' =>
+                            $geofenceData['zone']->name,
+
+                        'distance_meters' =>
+                            round(
+                                $geofenceData['distance'],
+                                2
+                            ),
+                    ]
+                    : null,
+
             'dtr' => $dtr,
         ]);
     }
 
-    /* ============================================================
-        TIME OUT
-    ============================================================ */
+    /*
+    |--------------------------------------------------------------------------
+    | Time out
+    |--------------------------------------------------------------------------
+    */
 
     public function timeOut(Request $request)
     {
-        $user =
-            $this->getAuthUser($request);
+        $authenticated =
+            $this->validateAuthenticatedEmployee(
+                $request
+            );
 
-        if (!$user) {
-            return response()->json([
-                'message' => 'Unauthorized'
-            ], 401);
-        }
+        /** @var User $user */
+        $user = $authenticated['user'];
 
-        if (!$this->ensureEmployee($user)) {
-            return response()->json([
-                'message' =>
-                    'DTR is for employees only.'
-            ], 403);
-        }
+        $employeeId =
+            $authenticated['employee_id'];
 
-        $request->validate([
-            'lat' => 'required|numeric',
-            'lng' => 'required|numeric',
+        $validated = $request->validate([
+            'lat' => [
+                'required',
+                'numeric',
+                'between:-90,90',
+            ],
+
+            'lng' => [
+                'required',
+                'numeric',
+                'between:-180,180',
+            ],
         ]);
+
+        $latitude = (float) $validated['lat'];
+        $longitude = (float) $validated['lng'];
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validate schedule and assigned campus
+        |--------------------------------------------------------------------------
+        */
+
+        $todaySchedule =
+            $this->validateScheduleOrFail(
+                $employeeId
+            );
+
+        $geofenceData = null;
+
+        if (!$this->isWorkFromHome($todaySchedule)) {
+            $geofenceData =
+                $this->validateEmployeeGeofenceOrFail(
+                    $employeeId,
+                    $latitude,
+                    $longitude
+                );
+        }
 
         $today = Carbon::today();
         $now = Carbon::now();
 
         $dtr = DailyTimeRecord::where(
-                'user_id',
-                $user->id
-            )
+            'user_id',
+            $user->id
+        )
             ->whereDate(
                 'work_date',
                 $today
             )
             ->first();
 
-        if (!$dtr || !$dtr->time_in) {
+        if (
+            !$dtr ||
+            !$dtr->time_in
+        ) {
             return response()->json([
                 'message' =>
-                    'You must time in first.'
+                    'You must time in first.',
             ], 409);
         }
 
         if ($dtr->time_out) {
             return response()->json([
                 'message' =>
-                    'Already timed out.'
+                    'Already timed out.',
             ], 409);
         }
 
-        $todaySchedule =
-            $this->validateScheduleOrFail($user);
+        /*
+        |--------------------------------------------------------------------------
+        | Calculate worked and required hours
+        |--------------------------------------------------------------------------
+        */
 
-/*
-|--------------------------------------------------------------------------
-| PREVENT TOO EARLY TIME OUT
-|--------------------------------------------------------------------------
-*/
+        $timeIn = Carbon::parse(
+            $dtr->time_in
+        );
 
-$in = Carbon::parse($dtr->time_in);
+        $workedMinutes =
+            $timeIn->diffInMinutes($now);
 
-$workedHours =
-    $in->diffInMinutes($now) / 60;
+        $workedHours =
+            $workedMinutes / 60;
 
-/*
-|--------------------------------------------------------------------------
-| REQUIRED HOURS
-|--------------------------------------------------------------------------
-*/
+        $requiredHours =
+            $todaySchedule->required_hours
+                ? (float)
+                    $todaySchedule->required_hours
+                : 10.0;
 
-$requiredHours =
-    $todaySchedule->required_hours
-        ? (float) $todaySchedule->required_hours
-        : 10;
+        $minimumHoursRequired =
+            $requiredHours / 2;
 
-/*
-|--------------------------------------------------------------------------
-| MUST COMPLETE AT LEAST HALF
-|--------------------------------------------------------------------------
-*/
+        /*
+        |--------------------------------------------------------------------------
+        | Check approved undertime
+        |--------------------------------------------------------------------------
+        */
 
-$minimumHoursRequired =
-    $requiredHours / 2;
+        $approvedUndertime =
+            $this->getApprovedUndertime(
+                $employeeId,
+                $today
+            );
 
-/*
-|--------------------------------------------------------------------------
-| CHECK APPROVED UNDERTIME
-|--------------------------------------------------------------------------
-*/
+        if (
+            !$approvedUndertime &&
+            $workedHours < $minimumHoursRequired
+        ) {
+            return response()->json([
+                'message' =>
+                    'You cannot time out yet. Minimum required hours not reached.',
 
-$employeeId =
-    $this->getEmployeeId($user->id);
+                'worked_hours' =>
+                    round($workedHours, 2),
 
-$approvedUndertime =
-    HrLeaveRequest::with('leaveType')
-        ->where('employee_id', $employeeId)
-        ->where('status', 'APPROVED')
-        ->whereDate(
-            'date_from',
-            '<=',
-            $today
-        )
-        ->whereDate(
-            'date_to',
-            '>=',
-            $today
-        )
-        ->whereHas('leaveType', function ($q) {
-            $q->whereRaw('LOWER(code) = ?', ['ut']);
-        })
-        ->latest() 
-        ->first();
+                'minimum_required_hours' =>
+                    round(
+                        $minimumHoursRequired,
+                        2
+                    ),
+            ], 403);
+        }
 
-/*
-|--------------------------------------------------------------------------
-| BLOCK TOO EARLY TIME OUT
-|--------------------------------------------------------------------------
-| ONLY if NO approved undertime
-|--------------------------------------------------------------------------
-*/
+        /*
+        |--------------------------------------------------------------------------
+        | Compute attendance status
+        |--------------------------------------------------------------------------
+        */
 
-if (
-    !$approvedUndertime &&
-    $workedHours <
-    $minimumHoursRequired
-) {
-
-    return response()->json([
-        'message' =>
-            'You cannot time out yet. Minimum required hours not reached.',
-        'worked_hours' =>
-            round($workedHours, 2),
-        'minimum_required_hours' =>
-            round($minimumHoursRequired, 2),
-    ], 403);
-}
-
-        $status =
+        $attendanceStatus =
             $this->computeAttendanceStatus(
-                $user,
+                $employeeId,
                 $dtr->time_in,
                 $now,
                 $todaySchedule
             );
 
-        $dtr->update([
-            'time_out' => $now,
-            'time_out_lat' => $request->lat,
-            'time_out_lng' => $request->lng,
-            'attendance_status' => $status,
-        ]);
+        $updatedDtr = DB::transaction(
+            function () use (
+                $user,
+                $today,
+                $now,
+                $latitude,
+                $longitude,
+                $attendanceStatus
+            ) {
+                $lockedDtr =
+                    DailyTimeRecord::where(
+                        'user_id',
+                        $user->id
+                    )
+                        ->whereDate(
+                            'work_date',
+                            $today
+                        )
+                        ->lockForUpdate()
+                        ->first();
 
-        $dtr->refresh();
+                if (
+                    !$lockedDtr ||
+                    !$lockedDtr->time_in
+                ) {
+                    $this->fail(
+                        'You must time in first.',
+                        409
+                    );
+                }
+
+                if ($lockedDtr->time_out) {
+                    $this->fail(
+                        'Already timed out.',
+                        409
+                    );
+                }
+
+                $lockedDtr->time_out = $now;
+                $lockedDtr->time_out_lat =
+                    $latitude;
+                $lockedDtr->time_out_lng =
+                    $longitude;
+                $lockedDtr->attendance_status =
+                    $attendanceStatus;
+                $lockedDtr->save();
+
+                return $lockedDtr->fresh();
+            }
+        );
 
         return response()->json([
             'status' => 'success',
             'message' => 'Time out recorded.',
-            'dtr' => $dtr,
+            'modality' => $todaySchedule->modality,
+
+            'org_unit_code' =>
+                $geofenceData
+                    ? strtoupper(
+                        trim(
+                            (string)
+                            $geofenceData['org_unit']->code
+                        )
+                    )
+                    : null,
+
+            'geofence_zone' =>
+                $geofenceData
+                    ? [
+                        'id' =>
+                            (int)
+                            $geofenceData['zone']->id,
+
+                        'name' =>
+                            $geofenceData['zone']->name,
+
+                        'distance_meters' =>
+                            round(
+                                $geofenceData['distance'],
+                                2
+                            ),
+                    ]
+                    : null,
+
+            'dtr' => $updatedDtr,
         ]);
     }
 
-    /* ============================================================
-        ATTENDANCE STATUS
-    ============================================================ */
+    /*
+    |--------------------------------------------------------------------------
+    | Leave helpers
+    |--------------------------------------------------------------------------
+    */
+
+    private function getApprovedUndertime(
+        int $employeeId,
+        Carbon $date
+    ): ?HrLeaveRequest {
+        return HrLeaveRequest::with('leaveType')
+            ->where('employee_id', $employeeId)
+            ->where('status', 'APPROVED')
+            ->whereDate(
+                'date_from',
+                '<=',
+                $date
+            )
+            ->whereDate(
+                'date_to',
+                '>=',
+                $date
+            )
+            ->whereHas(
+                'leaveType',
+                function ($query) {
+                    $query->whereRaw(
+                        'LOWER(code) = ?',
+                        ['ut']
+                    );
+                }
+            )
+            ->latest()
+            ->first();
+    }
+
+    private function getApprovedLeave(
+        int $employeeId,
+        string $date
+    ): ?HrLeaveRequest {
+        return HrLeaveRequest::with('leaveType')
+            ->where('employee_id', $employeeId)
+            ->where('status', 'APPROVED')
+            ->whereDate(
+                'date_from',
+                '<=',
+                $date
+            )
+            ->whereDate(
+                'date_to',
+                '>=',
+                $date
+            )
+            ->latest()
+            ->first();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Attendance status
+    |--------------------------------------------------------------------------
+    */
 
     private function computeAttendanceStatus(
-        $user,
+        int $employeeId,
         $timeIn,
         $timeOut,
         $scheduleDay
-    ) {
+    ): string {
         $in = Carbon::parse($timeIn);
         $out = Carbon::parse($timeOut);
 
-        $workDate =
-            $in->toDateString();
-
-        /*
-        |--------------------------------------------------------------------------
-        | CHECK APPROVED LEAVE
-        |--------------------------------------------------------------------------
-        */
-
-        $employeeId =
-            $this->getEmployeeId($user->id);
+        $workDate = $in->toDateString();
 
         $approvedLeave =
-            HrLeaveRequest::with('leaveType')
-                ->where('employee_id', $employeeId)
-                ->where('status', 'APPROVED')
-                ->whereDate(
-                    'date_from',
-                    '<=',
-                    $workDate
-                )
-                ->whereDate(
-                    'date_to',
-                    '>=',
-                    $workDate
-                )
-                ->latest()
-                ->first();
+            $this->getApprovedLeave(
+                $employeeId,
+                $workDate
+            );
 
         /*
         |--------------------------------------------------------------------------
-        | LEAVE FOUND
+        | Approved leave
         |--------------------------------------------------------------------------
         */
 
@@ -380,93 +853,49 @@ if (
             $approvedLeave &&
             $approvedLeave->leaveType
         ) {
-
-            /*
-            |--------------------------------------------------------------------------
-            | UNDERTIME
-            |--------------------------------------------------------------------------
-            */
-
-            if (
-                strtolower(
+            $leaveCode = strtolower(
+                trim(
+                    (string)
                     $approvedLeave->leaveType->code
-                ) === 'ut'
-            ) {
+                )
+            );
 
-                $scheduledIn =
-                    $in->copy()
-                        ->setTimeFromTimeString(
-                            $scheduleDay->time_in
-                        );
-
-                $actualInMinutes =
-                    ($in->hour * 60) +
-                    $in->minute;
-
-                $scheduledInMinutes =
-                    ($scheduledIn->hour * 60) +
-                    $scheduledIn->minute;
-
-                if (
-                    $actualInMinutes >
-                    $scheduledInMinutes
-                ) {
-                    return 'late_undertime';
-                }
-
-                return 'undertime';
+            if ($leaveCode === 'ut') {
+                return $this->isLate(
+                    $in,
+                    $scheduleDay->time_in
+                )
+                    ? 'late_undertime'
+                    : 'undertime';
             }
 
-            /*
-            |--------------------------------------------------------------------------
-            | USE LEAVE TYPE NAME
-            |--------------------------------------------------------------------------
-            */
-
             return strtolower(
-                preg_replace(
-                    '/[^a-zA-Z0-9]+/',
-                    '_',
-                    $approvedLeave->leaveType->name
+                trim(
+                    preg_replace(
+                        '/[^a-zA-Z0-9]+/',
+                        '_',
+                        (string)
+                        $approvedLeave->leaveType->name
+                    ),
+                    '_'
                 )
             );
         }
 
         /*
         |--------------------------------------------------------------------------
-        | NORMAL ATTENDANCE
-        |--------------------------------------------------------------------------
-        */
-
-        $scheduledIn =
-            $in->copy()
-                ->setTimeFromTimeString(
-                    $scheduleDay->time_in
-                );
-
-        /*
-        |--------------------------------------------------------------------------
-        | WORKED HOURS
+        | Normal attendance
         |--------------------------------------------------------------------------
         */
 
         $workedHours =
             $in->diffInMinutes($out) / 60;
 
-        /*
-        |--------------------------------------------------------------------------
-        | REQUIRED HOURS
-        |--------------------------------------------------------------------------
-        */
-
         $requiredHours =
-            (float) $scheduleDay->required_hours;
-
-        /*
-        |--------------------------------------------------------------------------
-        | HALF DAY
-        |--------------------------------------------------------------------------
-        */
+            $scheduleDay->required_hours
+                ? (float)
+                    $scheduleDay->required_hours
+                : 10.0;
 
         if (
             $workedHours <
@@ -475,23 +904,11 @@ if (
             return 'half_day';
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | LATE
-        |--------------------------------------------------------------------------
-        */
-
-        $actualInMinutes =
-            ($in->hour * 60) +
-            $in->minute;
-
-        $scheduledInMinutes =
-            ($scheduledIn->hour * 60) +
-            $scheduledIn->minute;
-
         if (
-            $actualInMinutes >
-            $scheduledInMinutes
+            $this->isLate(
+                $in,
+                $scheduleDay->time_in
+            )
         ) {
             return 'late';
         }
@@ -499,25 +916,48 @@ if (
         return 'present';
     }
 
-    /* ============================================================
-        TODAY
-    ============================================================ */
+    private function isLate(
+        Carbon $actualTimeIn,
+        ?string $scheduledTimeIn
+    ): bool {
+        if (!$scheduledTimeIn) {
+            return false;
+        }
+
+        $scheduled = $actualTimeIn
+            ->copy()
+            ->setTimeFromTimeString(
+                $scheduledTimeIn
+            );
+
+        return $actualTimeIn->greaterThan(
+            $scheduled
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Today
+    |--------------------------------------------------------------------------
+    */
 
     public function today(Request $request)
     {
-        $user =
-            $this->getAuthUser($request);
+        $authenticated =
+            $this->validateAuthenticatedEmployee(
+                $request
+            );
 
-        if (!$user) {
-            return response()->json([
-                'message' => 'Unauthorized'
-            ], 401);
-        }
+        /** @var User $user */
+        $user = $authenticated['user'];
+
+        $employeeId =
+            $authenticated['employee_id'];
 
         $dtr = DailyTimeRecord::where(
-                'user_id',
-                $user->id
-            )
+            'user_id',
+            $user->id
+        )
             ->whereDate(
                 'work_date',
                 Carbon::today()
@@ -526,25 +966,114 @@ if (
 
         $schedule =
             $this->getActiveSchedule(
-                $this->getEmployeeId($user->id)
+                $employeeId
             );
 
-        $todaySchedule =
-            $schedule
-                ? $this->getTodaySchedule($schedule)
-                : null;
+        $todaySchedule = $schedule
+            ? $this->getTodaySchedule($schedule)
+            : null;
+
+        $weeklySchedule = $schedule
+            ? $schedule->days
+                ->sortBy('day_of_week')
+                ->map(function ($day) {
+                    return [
+                        'day_of_week' =>
+                            (int)
+                            $day->day_of_week,
+
+                        'day_name' =>
+                            $this->getDayName(
+                                (int)
+                                $day->day_of_week
+                            ),
+
+                        'is_workday' =>
+                            (bool)
+                            $day->is_workday,
+
+                        'modality' =>
+                            $day->modality,
+
+                        'required_hours' =>
+                            $day->required_hours,
+
+                        'time_in' =>
+                            $day->time_in,
+
+                        'time_out' =>
+                            $day->time_out,
+
+                        'break_start' =>
+                            $day->break_start,
+
+                        'break_end' =>
+                            $day->break_end,
+                    ];
+                })
+                ->values()
+            : collect();
+
+        $orgUnit =
+            $this->getEmployeeOrgUnit(
+                $employeeId
+            );
+
+        $assignedZone = $orgUnit
+            ? $this->getAssignedGeofence(
+                $orgUnit
+            )
+            : null;
 
         return response()->json([
             'status' => 'success',
 
+            'employee_id' => $employeeId,
+
+            'org_unit' => $orgUnit
+                ? [
+                    'id' =>
+                        (int) $orgUnit->id,
+
+                    'code' =>
+                        strtoupper(
+                            trim(
+                                (string)
+                                $orgUnit->code
+                            )
+                        ),
+
+                    'name' =>
+                        $orgUnit->name,
+                ]
+                : null,
+
+            'assigned_geofence' =>
+    $assignedZone
+        ? [
+            'id' => (int) $assignedZone->id,
+            'name' => $assignedZone->name,
+
+            'latitude' => (float) $assignedZone->center_lat,
+            'longitude' => (float) $assignedZone->center_lng,
+
+            'radius' => (float) $assignedZone->radius,
+        ]
+        : null,
+
             'dtr' => $dtr,
 
-            'has_schedule' => !!$schedule,
+            'has_schedule' =>
+                $schedule !== null,
+
+            'weekly_schedule' =>
+                $weeklySchedule,
 
             'today_schedule' =>
                 $todaySchedule
                     ? [
                         'is_workday' =>
+                            (bool)
                             $todaySchedule->is_workday,
 
                         'modality' =>
@@ -569,48 +1098,82 @@ if (
         ]);
     }
 
-    /* ============================================================
-        MONTHLY
-    ============================================================ */
+    private function getDayName(
+        int $dayOfWeek
+    ): string {
+        return match ($dayOfWeek) {
+            1 => 'Monday',
+            2 => 'Tuesday',
+            3 => 'Wednesday',
+            4 => 'Thursday',
+            5 => 'Friday',
+            6 => 'Saturday',
+            7 => 'Sunday',
+            default => 'Unknown',
+        };
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Monthly
+    |--------------------------------------------------------------------------
+    */
 
     public function monthly(Request $request)
     {
-        $user =
-            $this->getAuthUser($request);
+        $authenticated =
+            $this->validateAuthenticatedEmployee(
+                $request
+            );
 
-        if (!$user) {
-            return response()->json([
-                'message' => 'Unauthorized'
-            ], 401);
-        }
+        /** @var User $user */
+        $user = $authenticated['user'];
 
-        $year =
-            $request->year ?? now()->year;
+        $validated = $request->validate([
+            'year' => [
+                'nullable',
+                'integer',
+                'min:2000',
+                'max:2100',
+            ],
 
-        $month =
-            $request->month ?? now()->month;
+            'month' => [
+                'nullable',
+                'integer',
+                'between:1,12',
+            ],
+        ]);
 
-        $records =
-            DailyTimeRecord::where(
-                    'user_id',
-                    $user->id
-                )
-                ->whereYear(
-                    'work_date',
-                    $year
-                )
-                ->whereMonth(
-                    'work_date',
-                    $month
-                )
-                ->orderBy(
-                    'work_date',
-                    'desc'
-                )
-                ->get();
+        $year = isset($validated['year'])
+            ? (int) $validated['year']
+            : now()->year;
+
+        $month = isset($validated['month'])
+            ? (int) $validated['month']
+            : now()->month;
+
+        $records = DailyTimeRecord::where(
+            'user_id',
+            $user->id
+        )
+            ->whereYear(
+                'work_date',
+                $year
+            )
+            ->whereMonth(
+                'work_date',
+                $month
+            )
+            ->orderBy(
+                'work_date',
+                'desc'
+            )
+            ->get();
 
         return response()->json([
             'status' => 'success',
+            'year' => $year,
+            'month' => $month,
             'records' => $records,
         ]);
     }

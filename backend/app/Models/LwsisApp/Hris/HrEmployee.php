@@ -62,6 +62,17 @@ class HrEmployee extends Model
         return $this->belongsTo(HrOrgUnit::class, 'org_unit_id');
     }
 
+    public function activeOrgMembership()
+{
+    return $this->hasOne(
+        HrOrgUnitMembership::class,
+        'employee_id'
+    )
+    ->where('is_active', true)
+    ->where('is_primary', true)
+    ->latest('effective_from');
+}
+
     // Core HR relations
     public function addresses()
     {

@@ -54,7 +54,7 @@ class EventController extends Controller
 {
     $validated = $request->validate([
         'event_name'        => 'required|string|max:255',
-        'event_description' => 'required|string',
+       'event_description' => 'nullable|string',
         'event_date'        => 'required|date',
         'event_time'        => 'required|string',
         'event_end_time'    => 'nullable|string',
@@ -90,7 +90,7 @@ class EventController extends Controller
                 \Illuminate\Support\Facades\Http::post('https://exp.host/--/api/v2/push/send', [
                     'to'    => $batch,
                     'sound' => 'default',
-                    'title' => '📢 New Event: ' . $event->event_name,
+                    'title' => 'New Event: ' . $event->event_name,
                     'body'  => $event->event_description,
                     'priority' => 'high',
                     'data'  => [
