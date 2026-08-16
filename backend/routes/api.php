@@ -26,6 +26,10 @@ use App\Http\Controllers\LwsisApp\ICTOServiceDeskController;
 use App\Http\Controllers\LwsisApp\KioskFaceController;
 use App\Http\Controllers\LwsisApp\GeofencePolygonController;
 use App\Http\Controllers\LwsisApp\admin\AdminDailyTimeRecordController;
+use App\Http\Controllers\LwsisApp\VisitorVisitController;
+use App\Http\Controllers\LwsisApp\VisitorKioskController;
+
+use App\Http\Controllers\LwsisApp\VisitorAuthController;
 
 // v2
 Route::prefix('lwsis')->group(function () {
@@ -33,6 +37,61 @@ Route::prefix('lwsis')->group(function () {
     // PUBLIC ROUTES
     Route::post('/login', [AuthController::class, 'login']);    
     Route::post('/biometrics-login', [AuthController::class, 'biometricLogin']);
+
+    // VISITOR PUBLIC ROUTES
+    Route::post(
+        '/visitor/register',
+        [VisitorAuthController::class, 'register']
+    );
+
+    Route::post(
+        '/visitor/login',
+        [VisitorAuthController::class, 'login']
+    );
+
+
+    // VISITOR PROTECTED ROUTES
+    Route::middleware('auth:sanctum')
+        ->prefix('visitor')
+        ->group(function () {
+
+            Route::get(
+                '/me',
+                [VisitorAuthController::class, 'me']
+            );
+
+            Route::put(
+                '/profile',
+                [VisitorAuthController::class, 'updateProfile']
+            );
+
+            Route::post(
+                '/logout',
+                [VisitorAuthController::class, 'logout']
+            );
+
+            // VISITOR VISIT REQUESTS
+            Route::get(
+                '/visits',
+                [VisitorVisitController::class, 'index']
+            );
+
+            Route::post(
+                '/visits',
+                [VisitorVisitController::class, 'store']
+            );
+
+            Route::get(
+                '/visits/{uuid}',
+                [VisitorVisitController::class, 'show']
+            );
+        });
+
+        // KIOSK VISITOR QR SCANNER
+        Route::post(
+            '/kiosk/visitor/scan',
+            [VisitorKioskController::class, 'scan']
+        );
 
     // ADMIN ROUTES
     Route::post('/send/notifications', [NotificationsController::class, 'store']);
